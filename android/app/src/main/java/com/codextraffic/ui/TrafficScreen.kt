@@ -1,5 +1,8 @@
 package com.codextraffic.ui
 
+import android.graphics.Paint
+import android.graphics.Typeface
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +20,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,32 +30,45 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.toArgb
 import com.codextraffic.TrafficViewModel
 import com.codextraffic.model.ConnectionStatus
 import com.codextraffic.model.ProjectTraffic
 import com.codextraffic.model.ReasonCode
 import com.codextraffic.model.TrafficUiState
+import kotlin.math.min
 
-private val Ink = Color(0xFFE7E1CC)
-private val Panel = Color(0xFF202020)
-private val PanelDark = Color(0xFF141414)
-private val GridLine = Color(0xFF333333)
-private val BotShell = Color(0xFFD9D1BD)
-private val BotShadow = Color(0xFF9E9586)
-private val BotScreen = Color(0xFF101716)
-private val PixelGreen = Color(0xFF36D66B)
-private val PixelYellow = Color(0xFFE9C846)
-private val PixelRed = Color(0xFFE34A4A)
-private val PixelBlue = Color(0xFF69B7FF)
-private val Muted = Color(0xFF9C9C9C)
+private val Ink = Color(0xFFE8E1CA)
+private val Panel = Color.Black
+private val PanelDark = Color.Black
+private val GridLine = Color(0xFF171717)
+private val BotShell = Color(0xFFC9922D)
+private val BotShellDark = Color(0xFF5F4316)
+private val BotShadow = Color(0xFF4A3411)
+private val BotScreen = Color(0xFF020706)
+private val LensRim = Color(0xFF9B772E)
+private val LensGlass = Color(0xFF061012)
+private val TreadRubber = Color(0xFF080808)
+private val TreadDot = Color(0xFF262626)
+private val StatusGreen = Color(0xFF36D66B)
+private val StatusYellow = Color(0xFFE9C846)
+private val StatusRed = Color(0xFFE34A4A)
+private val StatusBlue = Color(0xFF69B7FF)
+private val Muted = Color(0xFF747474)
 
 @Composable
 fun CodexTrafficApp(viewModel: TrafficViewModel) {
@@ -138,19 +156,19 @@ private fun BotStatusPanel(summary: BotSummary) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .border(3.dp, GridLine)
-            .background(Panel)
+            .border(1.dp, GridLine, RoundedCornerShape(8.dp))
+            .background(Panel, RoundedCornerShape(8.dp))
             .padding(14.dp)
             .testTag("bot_panel"),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        PixelBot(
+        PetBot(
             mood = summary.mood,
             modifier = Modifier
-                .fillMaxWidth(0.72f)
-                .widthIn(max = 220.dp)
+                .fillMaxWidth(0.82f)
+                .widthIn(max = 260.dp)
                 .aspectRatio(1f)
-                .testTag("pixel_bot"),
+                .testTag("pet_bot"),
         )
         Spacer(Modifier.height(12.dp))
         StatusBubble(
@@ -161,129 +179,263 @@ private fun BotStatusPanel(summary: BotSummary) {
 }
 
 @Composable
-private fun PixelBot(
+private fun PetBot(
     mood: BotMood,
     modifier: Modifier = Modifier,
 ) {
-    val eye = mood.eyeColor
-    val mouth = mood.mouthPattern
+    Canvas(
+        modifier = modifier
+            .background(Color.Black)
+            .border(1.dp, GridLine, RoundedCornerShape(8.dp)),
+    ) {
+        drawPet(mood)
+    }
+}
+
+private fun DrawScope.drawPet(mood: BotMood) {
+    val side = min(size.width, size.height)
+    val w = size.width
+    val h = size.height
+    val unit = side / 100f
     val accent = mood.accent
 
-    Box(
-        modifier = modifier
-            .background(Color(0xFF0D0D0D))
-            .border(4.dp, GridLine)
-            .padding(10.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(verticalAlignment = Alignment.Bottom) {
-                PixelBlock(accent, 10)
-                Spacer(Modifier.width(22.dp))
-                PixelBlock(accent, 10)
-            }
-            Spacer(Modifier.height(4.dp))
-            Box {
-                Column(
-                    modifier = Modifier
-                        .width(106.dp)
-                        .background(BotShell, RectangleShape)
-                        .border(4.dp, BotShadow)
-                        .padding(10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        PixelBlock(eye, 18)
-                        PixelBlock(eye, 18)
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    PixelMouth(mouth, accent)
-                    Spacer(Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        PixelBlock(accent.copy(alpha = 0.65f), 8)
-                        PixelBlock(accent.copy(alpha = 0.45f), 8)
-                        PixelBlock(accent.copy(alpha = 0.30f), 8)
-                    }
-                }
-                PixelBlock(accent, 12, Modifier.align(Alignment.TopStart))
-                PixelBlock(accent, 12, Modifier.align(Alignment.TopEnd))
-            }
-            Row(
-                modifier = Modifier.width(132.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                PixelBlock(BotShell, 16)
-                PixelBlock(BotShell, 16)
-            }
-            Column(
-                modifier = Modifier
-                    .width(92.dp)
-                    .background(BotShell)
-                    .border(4.dp, BotShadow)
-                    .padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(32.dp)
-                        .background(BotScreen)
-                        .border(2.dp, accent),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = mood.bellyText,
-                        color = accent,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        letterSpacing = 0.sp,
-                    )
-                }
-            }
-            Row(
-                modifier = Modifier.width(76.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                PixelBlock(BotShadow, 18)
-                PixelBlock(BotShadow, 18)
-            }
-        }
-    }
-}
-
-@Composable
-private fun PixelMouth(pattern: MouthPattern, color: Color) {
-    val rows = when (pattern) {
-        MouthPattern.Smile -> listOf("10001", "01110")
-        MouthPattern.Flat -> listOf("00000", "11111")
-        MouthPattern.Alert -> listOf("00100", "00100", "00100")
-        MouthPattern.Sleep -> listOf("01010", "10101")
-    }
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        rows.forEach { row ->
-            Row {
-                row.forEach { cell ->
-                    PixelBlock(
-                        color = if (cell == '1') color else Color.Transparent,
-                        size = 6,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PixelBlock(
-    color: Color,
-    size: Int,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .size(size.dp)
-            .background(color, RectangleShape),
+    drawRoundRect(
+        color = Color(0xFF020202),
+        topLeft = Offset(w * 0.10f, h * 0.80f),
+        size = Size(w * 0.80f, h * 0.06f),
+        cornerRadius = CornerRadius(unit * 10f, unit * 10f),
     )
+
+    drawArm(w * 0.31f, h * 0.56f, unit, accent, left = true)
+    drawArm(w * 0.69f, h * 0.56f, unit, accent, left = false)
+
+    drawTreads(w, h, unit, accent)
+    drawBody(w, h, unit, mood)
+    drawNeck(w, h, unit)
+    drawEyeBridge(w, h, unit)
+    drawLens(Offset(w * 0.37f, h * 0.27f), unit, mood, left = true)
+    drawLens(Offset(w * 0.63f, h * 0.27f), unit, mood, left = false)
+}
+
+private fun DrawScope.drawLens(
+    center: Offset,
+    unit: Float,
+    mood: BotMood,
+    left: Boolean,
+) {
+    val moodAccent = mood.accent
+    val outer = Size(unit * 27f, unit * 22f)
+    val outerTopLeft = Offset(center.x - outer.width / 2f, center.y - outer.height / 2f)
+    drawOval(
+        brush = Brush.radialGradient(
+            colors = listOf(Color(0xFFD2AA55), LensRim, Color(0xFF342409)),
+            center = Offset(center.x - unit * 4f, center.y - unit * 5f),
+            radius = unit * 18f,
+        ),
+        topLeft = outerTopLeft,
+        size = outer,
+    )
+    drawOval(
+        color = Color.Black.copy(alpha = 0.45f),
+        topLeft = Offset(outerTopLeft.x + unit * 1.2f, outerTopLeft.y + unit * 1.4f),
+        size = Size(outer.width - unit * 2.4f, outer.height - unit * 2.6f),
+        style = Stroke(width = unit * 1.1f),
+    )
+
+    val glass = Size(unit * 20f, unit * 14.5f)
+    val glassTopLeft = Offset(center.x - glass.width / 2f, center.y - glass.height / 2f)
+    drawOval(
+        brush = Brush.radialGradient(
+            colors = listOf(Color(0xFF132325), LensGlass, Color.Black),
+            center = Offset(center.x - unit * 3f, center.y - unit * 3f),
+            radius = unit * 14f,
+        ),
+        topLeft = glassTopLeft,
+        size = glass,
+    )
+
+    when (mood.eyePattern) {
+        EyePattern.Bright -> {
+            drawCircle(moodAccent.copy(alpha = 0.16f), radius = unit * 6.8f, center = center)
+            drawCircle(Color(0xFF173A29), radius = unit * 5.2f, center = center)
+            drawCircle(moodAccent.copy(alpha = 0.86f), radius = unit * 2.8f, center = center)
+            drawCircle(Color.Black, radius = unit * 1.1f, center = center)
+        }
+
+        EyePattern.Watch -> {
+            val watchCenter = center.copy(x = center.x + if (left) unit * 1.6f else -unit * 1.6f)
+            drawCircle(moodAccent.copy(alpha = 0.15f), radius = unit * 6.0f, center = watchCenter)
+            drawCircle(Color(0xFF3A3217), radius = unit * 4.8f, center = watchCenter)
+            drawCircle(moodAccent.copy(alpha = 0.82f), radius = unit * 2.5f, center = watchCenter)
+            drawCircle(Color.Black, radius = unit * 1.1f, center = watchCenter)
+        }
+
+        EyePattern.Alert -> {
+            drawRoundRect(
+                color = moodAccent,
+                topLeft = Offset(center.x - unit * 1.2f, center.y - unit * 5f),
+                size = Size(unit * 2.4f, unit * 7.2f),
+                cornerRadius = CornerRadius(unit * 1.2f, unit * 1.2f),
+            )
+            drawCircle(moodAccent, radius = unit * 1.5f, center = Offset(center.x, center.y + unit * 5f))
+        }
+
+        EyePattern.Sleep -> {
+            drawLine(
+                color = mood.eyeColor,
+                start = Offset(center.x - unit * 6f, center.y),
+                end = Offset(center.x + unit * 6f, center.y),
+                strokeWidth = unit * 2.1f,
+                cap = androidx.compose.ui.graphics.StrokeCap.Round,
+            )
+        }
+
+        EyePattern.Offline -> {
+            drawCircle(mood.eyeColor.copy(alpha = 0.25f), radius = unit * 4.5f, center = center)
+            drawCircle(mood.eyeColor, radius = unit * 2.0f, center = center)
+        }
+    }
+
+    drawCircle(
+        color = Color.White.copy(alpha = 0.30f),
+        radius = unit * 1.7f,
+        center = Offset(center.x + if (left) -unit * 4.2f else unit * 4.2f, center.y - unit * 4.6f),
+    )
+}
+
+private fun DrawScope.drawEyeBridge(w: Float, h: Float, unit: Float) {
+    drawRoundRect(
+        color = BotShadow,
+        topLeft = Offset(w * 0.46f, h * 0.31f),
+        size = Size(w * 0.08f, unit * 4f),
+        cornerRadius = CornerRadius(unit * 2f, unit * 2f),
+    )
+}
+
+private fun DrawScope.drawNeck(w: Float, h: Float, unit: Float) {
+    drawRoundRect(
+        color = BotShadow,
+        topLeft = Offset(w * 0.475f, h * 0.36f),
+        size = Size(w * 0.05f, h * 0.10f),
+        cornerRadius = CornerRadius(unit * 2f, unit * 2f),
+    )
+    drawCircle(BotShellDark, radius = unit * 2.1f, center = Offset(w * 0.50f, h * 0.41f))
+}
+
+private fun DrawScope.drawBody(w: Float, h: Float, unit: Float, mood: BotMood) {
+    val bodyLeft = w * 0.28f
+    val bodyTop = h * 0.45f
+    val bodyWidth = w * 0.44f
+    val bodyHeight = h * 0.25f
+    drawRoundRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(Color(0xFFD9A849), BotShell, BotShellDark),
+            startY = bodyTop,
+            endY = bodyTop + bodyHeight,
+        ),
+        topLeft = Offset(bodyLeft, bodyTop),
+        size = Size(bodyWidth, bodyHeight),
+        cornerRadius = CornerRadius(unit * 6f, unit * 6f),
+    )
+    drawRoundRect(
+        color = Color.Black.copy(alpha = 0.40f),
+        topLeft = Offset(bodyLeft + bodyWidth * 0.70f, bodyTop + unit * 3f),
+        size = Size(bodyWidth * 0.23f, bodyHeight - unit * 8f),
+        cornerRadius = CornerRadius(unit * 4f, unit * 4f),
+    )
+    drawRoundRect(
+        color = BotShadow,
+        topLeft = Offset(bodyLeft, bodyTop),
+        size = Size(bodyWidth, bodyHeight),
+        cornerRadius = CornerRadius(unit * 6f, unit * 6f),
+        style = Stroke(width = unit * 1.25f),
+    )
+    drawCircle(
+        color = Color.White.copy(alpha = 0.18f),
+        radius = unit * 3.5f,
+        center = Offset(bodyLeft + bodyWidth * 0.23f, bodyTop + bodyHeight * 0.20f),
+    )
+
+    val screenLeft = bodyLeft + bodyWidth * 0.16f
+    val screenTop = bodyTop + bodyHeight * 0.34f
+    val screenWidth = bodyWidth * 0.68f
+    val screenHeight = bodyHeight * 0.30f
+    drawRoundRect(
+        color = BotScreen,
+        topLeft = Offset(screenLeft, screenTop),
+        size = Size(screenWidth, screenHeight),
+        cornerRadius = CornerRadius(unit * 3.2f, unit * 3.2f),
+    )
+    drawRoundRect(
+        color = mood.accent.copy(alpha = 0.62f),
+        topLeft = Offset(screenLeft, screenTop),
+        size = Size(screenWidth, screenHeight),
+        cornerRadius = CornerRadius(unit * 3.2f, unit * 3.2f),
+        style = Stroke(width = unit * 0.85f),
+    )
+    drawContext.canvas.nativeCanvas.drawText(
+        mood.bellyText,
+        screenLeft + screenWidth / 2f,
+        screenTop + screenHeight * 0.68f,
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = mood.accent.toArgb()
+            textAlign = Paint.Align.CENTER
+            textSize = unit * 6.2f
+            typeface = Typeface.DEFAULT_BOLD
+        },
+    )
+
+    repeat(5) { index ->
+        drawCircle(
+            color = if (index == 2) mood.accent else BotShadow,
+            radius = unit * 1.45f,
+            center = Offset(bodyLeft + bodyWidth * (0.22f + index * 0.14f), bodyTop + bodyHeight * 0.80f),
+        )
+    }
+}
+
+private fun DrawScope.drawArm(anchorX: Float, anchorY: Float, unit: Float, accent: Color, left: Boolean) {
+    val dir = if (left) -1f else 1f
+    drawLine(
+        color = BotShadow,
+        start = Offset(anchorX, anchorY),
+        end = Offset(anchorX + dir * unit * 10f, anchorY + unit * 8f),
+        strokeWidth = unit * 2.5f,
+        cap = androidx.compose.ui.graphics.StrokeCap.Round,
+    )
+    drawCircle(BotShellDark, radius = unit * 3f, center = Offset(anchorX + dir * unit * 11f, anchorY + unit * 9f))
+    drawCircle(accent.copy(alpha = 0.38f), radius = unit * 1.4f, center = Offset(anchorX + dir * unit * 11f, anchorY + unit * 9f))
+}
+
+private fun DrawScope.drawTreads(w: Float, h: Float, unit: Float, accent: Color) {
+    val left = w * 0.24f
+    val top = h * 0.70f
+    val width = w * 0.52f
+    val height = h * 0.12f
+    drawRoundRect(
+        brush = Brush.verticalGradient(
+            colors = listOf(Color(0xFF171717), TreadRubber, Color.Black),
+            startY = top,
+            endY = top + height,
+        ),
+        topLeft = Offset(left, top),
+        size = Size(width, height),
+        cornerRadius = CornerRadius(height / 2f, height / 2f),
+    )
+    drawRoundRect(
+        color = BotShadow,
+        topLeft = Offset(left, top),
+        size = Size(width, height),
+        cornerRadius = CornerRadius(height / 2f, height / 2f),
+        style = Stroke(width = unit * 1.1f),
+    )
+    repeat(6) { index ->
+        drawCircle(
+            color = if (index == 2 || index == 3) accent.copy(alpha = 0.45f) else TreadDot,
+            radius = unit * 2.7f,
+            center = Offset(left + width * (0.18f + index * 0.13f), top + height / 2f),
+        )
+    }
 }
 
 @Composable
@@ -293,8 +445,8 @@ private fun StatusBubble(
 ) {
     Column(
         modifier = modifier
-            .border(3.dp, summary.mood.accent)
-            .background(PanelDark)
+            .border(2.dp, summary.mood.accent.copy(alpha = 0.62f), RoundedCornerShape(6.dp))
+            .background(PanelDark, RoundedCornerShape(6.dp))
             .padding(12.dp),
     ) {
         Text(
@@ -381,8 +533,8 @@ private fun ProjectRow(project: ProjectTraffic) {
         Box(
             modifier = Modifier
                 .size(20.dp)
-                .background(status.color)
-                .border(2.dp, Color(0xFF050505)),
+                .background(status.color, CircleShape)
+                .border(1.dp, Color(0xFF050505), CircleShape),
         )
         Spacer(Modifier.width(10.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -488,12 +640,12 @@ private fun ProjectTraffic.priority(): Int = when {
 }
 
 private fun ProjectTraffic.statusLabel(): ProjectStatusLabel = when (reason) {
-    ReasonCode.Work -> ProjectStatusLabel("推进中", PixelGreen)
-    ReasonCode.Recent -> ProjectStatusLabel("观察", PixelYellow)
+    ReasonCode.Work -> ProjectStatusLabel("推进中", StatusGreen)
+    ReasonCode.Recent -> ProjectStatusLabel("观察", StatusYellow)
     ReasonCode.Idle -> ProjectStatusLabel("空闲", Muted)
-    ReasonCode.Stale -> ProjectStatusLabel("卡住?", PixelRed)
-    ReasonCode.Blocked -> ProjectStatusLabel("阻塞", PixelRed)
-    ReasonCode.CodexOff -> ProjectStatusLabel("离线", PixelRed)
+    ReasonCode.Stale -> ProjectStatusLabel("卡住?", StatusRed)
+    ReasonCode.Blocked -> ProjectStatusLabel("阻塞", StatusRed)
+    ReasonCode.CodexOff -> ProjectStatusLabel("离线", StatusRed)
 }
 
 private fun ReasonCode.label(): String = when (this) {
@@ -526,12 +678,12 @@ private fun ConnectionStatus.actionText(): String = when (this) {
 }
 
 private fun ConnectionStatus.accent(): Color = when (this) {
-    ConnectionStatus.Connected -> PixelGreen
+    ConnectionStatus.Connected -> StatusGreen
     ConnectionStatus.Connecting,
-    ConnectionStatus.Scanning -> PixelYellow
+    ConnectionStatus.Scanning -> StatusYellow
     ConnectionStatus.PermissionMissing,
     ConnectionStatus.BluetoothOff,
-    ConnectionStatus.Error -> PixelRed
+    ConnectionStatus.Error -> StatusRed
     ConnectionStatus.Disconnected -> Muted
 }
 
@@ -547,22 +699,23 @@ private data class BotSummary(
     val action: String,
 )
 
-private enum class MouthPattern {
-    Smile,
-    Flat,
+private enum class EyePattern {
+    Bright,
+    Watch,
     Alert,
     Sleep,
+    Offline,
 }
 
 private enum class BotMood(
     val accent: Color,
     val eyeColor: Color,
     val bellyText: String,
-    val mouthPattern: MouthPattern,
+    val eyePattern: EyePattern,
 ) {
-    Happy(PixelGreen, PixelGreen, "跑", MouthPattern.Smile),
-    Watch(PixelYellow, PixelYellow, "看", MouthPattern.Flat),
-    Alert(PixelRed, PixelRed, "!!!", MouthPattern.Alert),
-    Sleepy(Muted, Color(0xFF6C6C6C), "歇", MouthPattern.Sleep),
-    Offline(PixelBlue, Color(0xFF5E7380), "等", MouthPattern.Flat),
+    Happy(StatusGreen, StatusGreen, "忙", EyePattern.Bright),
+    Watch(StatusYellow, StatusYellow, "看", EyePattern.Watch),
+    Alert(StatusRed, StatusRed, "!!!", EyePattern.Alert),
+    Sleepy(Muted, Color(0xFF5C5C5C), "歇", EyePattern.Sleep),
+    Offline(StatusBlue, Color(0xFF4E6470), "等", EyePattern.Offline),
 }

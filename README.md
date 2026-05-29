@@ -1,11 +1,14 @@
 # Codex 桌宠
 
 一台旧 Android 手机可以摆在旁边，当作 Codex 项目状态桌宠。macOS companion
-只读本机 Codex 状态，通过 BLE 广播 compact JSON；Android app 连接后显示像素
-机器人、状态气泡和项目看板。
+只读本机 Codex 状态，通过 BLE 广播 compact JSON；Android app 连接后显示高保真
+双目履带机器人、状态气泡和项目看板。
 
 核心目标不是“显示一个颜色”，而是让用户不用一直盯着 Codex：桌宠会把正在推进、
 近期有动静、需要介入或可能卡住的项目排出来。
+
+视觉上优先照顾旧手机常亮场景：背景和面板尽量使用纯黑，只点亮机器人眼睛、
+胸屏、连接状态和必要的项目状态提示，降低 OLED 屏耗电和烧屏风险。
 
 ## Projects
 
@@ -98,4 +101,4 @@ android/app/build/outputs/apk/debug/app-debug.apk
 2. On Android, install and open the app。
 3. Grant Bluetooth permissions。
 4. Confirm the connection label changes to `已连接`。
-5. Confirm the pixel pet, status bubble, and project board update as Codex activity changes。
+5. Confirm the high-fidelity pet, status bubble, and project board update as Codex activity changes。

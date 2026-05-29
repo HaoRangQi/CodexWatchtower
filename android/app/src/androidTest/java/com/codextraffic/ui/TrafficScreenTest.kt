@@ -19,7 +19,7 @@ class TrafficScreenTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun showsPixelPetAndProjectRows() {
+    fun showsPetAndProjectRows() {
         composeRule.setContent {
             TrafficTheme {
                 TrafficScreen(
@@ -40,7 +40,7 @@ class TrafficScreenTest {
         }
 
         composeRule.onNodeWithText("CODEX 桌宠").assertIsDisplayed()
-        composeRule.onNodeWithTag("pixel_bot").assertIsDisplayed()
+        composeRule.onNodeWithTag("pet_bot").assertIsDisplayed()
         composeRule.onNodeWithTag("bot_panel").assertIsDisplayed()
         composeRule.onNodeWithTag("bot_summary").assertIsDisplayed()
         composeRule.onNodeWithText("已连接").assertIsDisplayed()
@@ -65,7 +65,7 @@ class TrafficScreenTest {
         }
 
         composeRule.onNodeWithTag("connection_status").assertTextEquals("未连接")
-        composeRule.onNodeWithTag("pixel_bot").assertIsDisplayed()
+        composeRule.onNodeWithTag("pet_bot").assertIsDisplayed()
         composeRule.onNodeWithText("我暂时听不到 Mac companion 的信号。").assertIsDisplayed()
         composeRule.onNodeWithText("桌宠还没收到项目信号").assertIsDisplayed()
     }
