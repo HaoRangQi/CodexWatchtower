@@ -96,7 +96,7 @@ fun CodexTrafficApp(viewModel: TrafficViewModel) {
             modifier = Modifier.fillMaxSize(),
             color = PanelDark,
         ) {
-            TrafficScreen(
+            TrafficPagerScreen(
                 uiState = uiState,
                 onHideProject = viewModel::hideProject,
                 onRestoreProject = viewModel::restoreProject,

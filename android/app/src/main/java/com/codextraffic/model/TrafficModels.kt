@@ -36,12 +36,23 @@ data class ProjectTraffic(
     val reason: ReasonCode,
 )
 
+data class PetFeedItem(
+    val projectId: String,
+    val title: String,
+    val body: String,
+    val light: TrafficLight,
+    val ageSeconds: Long,
+    val reason: ReasonCode,
+)
+
 data class TrafficSnapshot(
     val version: Int,
     val timestampSeconds: Long,
     val overall: TrafficLight,
     val projects: List<ProjectTraffic>,
     val omittedCount: Int,
+    val feedItems: List<PetFeedItem> = emptyList(),
+    val omittedFeedCount: Int = 0,
 ) {
     companion object {
         val empty = TrafficSnapshot(
@@ -50,6 +61,8 @@ data class TrafficSnapshot(
             overall = TrafficLight.Red,
             projects = emptyList(),
             omittedCount = 0,
+            feedItems = emptyList(),
+            omittedFeedCount = 0,
         )
     }
 }

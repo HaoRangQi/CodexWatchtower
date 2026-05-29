@@ -9,12 +9,25 @@ public struct PayloadEncoder: Sendable {
 
     public func encode(_ status: TrafficStatus) throws -> Data {
         var projectRows = status.projects.map(row)
+        var feedRows = status.feedItems.map(row)
         var moreCount = status.moreCount
+        var moreFeedCount = status.moreFeedCount
 
         while true {
-            let data = try dataFor(status: status, projects: projectRows, moreCount: moreCount)
+            let data = try dataFor(
+                status: status,
+                projects: projectRows,
+                moreCount: moreCount,
+                feedItems: feedRows,
+                moreFeedCount: moreFeedCount
+            )
             if data.count <= maxBytes {
                 return data
+            }
+            if !feedRows.isEmpty {
+                feedRows.removeLast()
+                moreFeedCount = status.moreFeedCount + status.feedItems.count - feedRows.count
+                continue
             }
             guard !projectRows.isEmpty else {
                 throw PayloadEncodingError.payloadCannotFit(maxBytes: maxBytes)
@@ -24,15 +37,32 @@ public struct PayloadEncoder: Sendable {
         }
     }
 
-    private func dataFor(status: TrafficStatus, projects: [[Any]], moreCount: Int) throws -> Data {
+    private func dataFor(
+        status: TrafficStatus,
+        projects: [[Any]],
+        moreCount: Int,
+        feedItems: [[Any]],
+        moreFeedCount: Int
+    ) throws -> Data {
         let rows = try projects.map { row -> String in
             let encoded = try row.map(jsonValue).joined(separator: ",")
             return "[\(encoded)]"
         }.joined(separator: ",")
+        let feedRows = try feedItems.map { row -> String in
+            let encoded = try row.map(jsonValue).joined(separator: ",")
+            return "[\(encoded)]"
+        }.joined(separator: ",")
 
-        let payload = """
-        {"v":\(status.version),"t":\(Int(status.timestamp.timeIntervalSince1970)),"o":\(try jsonString(status.overall.rawValue)),"p":[\(rows)],"m":\(moreCount)}
-        """
+        let feedPayload = feedItems.isEmpty && moreFeedCount == 0
+            ? ""
+            : #","f":["# + feedRows + #"],"n":"# + String(moreFeedCount)
+        let payload = #"{"v":"# + String(status.version)
+            + #","t":"# + String(Int(status.timestamp.timeIntervalSince1970))
+            + #","o":"# + (try jsonString(status.overall.rawValue))
+            + #","p":["# + rows
+            + #"],"m":"# + String(moreCount)
+            + feedPayload
+            + "}"
         return Data(payload.utf8)
     }
 
@@ -43,6 +73,17 @@ public struct PayloadEncoder: Sendable {
             project.light.rawValue,
             project.ageSeconds,
             project.reason.rawValue
+        ]
+    }
+
+    private func row(_ item: PetFeedItem) -> [Any] {
+        [
+            item.projectID,
+            item.title,
+            item.body,
+            item.light.rawValue,
+            item.ageSeconds,
+            item.reason.rawValue
         ]
     }
 

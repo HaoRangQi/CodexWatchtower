@@ -10,8 +10,11 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.codextraffic.model.ConnectionStatus
+import com.codextraffic.model.PetFeedItem
 import com.codextraffic.model.ProjectTraffic
 import com.codextraffic.model.ReasonCode
 import com.codextraffic.model.TrafficLight
@@ -30,7 +33,7 @@ class TrafficScreenTest {
     fun showsPetAndProjectRows() {
         composeRule.setContent {
             TrafficTheme {
-                TrafficScreen(
+                TrafficPagerScreen(
                     uiState = TrafficUiState(
                         connectionStatus = ConnectionStatus.Connected,
                         snapshot = TrafficSnapshot(
@@ -68,7 +71,7 @@ class TrafficScreenTest {
     fun recentStateUsesConcreteText() {
         composeRule.setContent {
             TrafficTheme {
-                TrafficScreen(
+                TrafficPagerScreen(
                     uiState = TrafficUiState(
                         connectionStatus = ConnectionStatus.Connected,
                         snapshot = TrafficSnapshot(
@@ -152,5 +155,45 @@ class TrafficScreenTest {
         composeRule.runOnIdle {
             check(restoredProject?.id == "hidden")
         }
+    }
+
+    @Test
+    fun swipingLeftShowsPetFeedScreen() {
+        composeRule.setContent {
+            TrafficTheme {
+                TrafficPagerScreen(
+                    uiState = TrafficUiState(
+                        connectionStatus = ConnectionStatus.Connected,
+                        snapshot = TrafficSnapshot(
+                            version = 1,
+                            timestampSeconds = 10,
+                            overall = TrafficLight.Green,
+                            projects = listOf(
+                                ProjectTraffic("a1b2c3d4", "loading", TrafficLight.Green, 4, ReasonCode.Work)
+                            ),
+                            omittedCount = 0,
+                            feedItems = listOf(
+                                PetFeedItem(
+                                    projectId = "a1b2c3d4",
+                                    title = "正在推进 loading",
+                                    body = "4 秒内有新动作",
+                                    light = TrafficLight.Green,
+                                    ageSeconds = 4,
+                                    reason = ReasonCode.Work,
+                                )
+                            ),
+                            omittedFeedCount = 0,
+                        ),
+                    ),
+                    petMotionEnabled = false,
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("traffic_pager").performTouchInput { swipeLeft() }
+
+        composeRule.onNodeWithTag("pet_feed_screen").assertIsDisplayed()
+        composeRule.onNodeWithText("正在推进 loading").assertIsDisplayed()
+        composeRule.onNodeWithText("4 秒内有新动作").assertIsDisplayed()
     }
 }

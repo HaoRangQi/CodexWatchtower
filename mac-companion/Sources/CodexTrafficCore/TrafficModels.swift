@@ -97,25 +97,55 @@ public struct ProjectStatus: Equatable, Sendable {
     }
 }
 
+public struct PetFeedItem: Equatable, Sendable {
+    public let projectID: String
+    public let title: String
+    public let body: String
+    public let light: TrafficLight
+    public let ageSeconds: Int
+    public let reason: ReasonCode
+
+    public init(
+        projectID: String,
+        title: String,
+        body: String,
+        light: TrafficLight,
+        ageSeconds: Int,
+        reason: ReasonCode
+    ) {
+        self.projectID = projectID
+        self.title = title
+        self.body = body
+        self.light = light
+        self.ageSeconds = ageSeconds
+        self.reason = reason
+    }
+}
+
 public struct TrafficStatus: Equatable, Sendable {
     public let version: Int
     public let timestamp: Date
     public let overall: TrafficLight
     public let projects: [ProjectStatus]
     public let moreCount: Int
+    public let feedItems: [PetFeedItem]
+    public let moreFeedCount: Int
 
     public init(
         version: Int,
         timestamp: Date,
         overall: TrafficLight,
         projects: [ProjectStatus],
-        moreCount: Int
+        moreCount: Int,
+        feedItems: [PetFeedItem] = [],
+        moreFeedCount: Int = 0
     ) {
         self.version = version
         self.timestamp = timestamp
         self.overall = overall
         self.projects = projects
         self.moreCount = moreCount
+        self.feedItems = feedItems
+        self.moreFeedCount = moreFeedCount
     }
 }
-

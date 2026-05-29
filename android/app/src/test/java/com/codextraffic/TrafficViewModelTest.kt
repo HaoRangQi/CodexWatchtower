@@ -1,6 +1,7 @@
 package com.codextraffic
 
 import com.codextraffic.model.ConnectionStatus
+import com.codextraffic.model.PetFeedItem
 import com.codextraffic.model.ProjectTraffic
 import com.codextraffic.model.ReasonCode
 import com.codextraffic.model.TrafficLight
@@ -87,6 +88,10 @@ class TrafficViewModelTest {
                 overall = TrafficLight.Green,
                 projects = listOf(active, hidden),
                 omittedCount = 0,
+                feedItems = listOf(
+                    PetFeedItem("active", "正在推进 loading", "2 秒内有新动作", TrafficLight.Green, 2, ReasonCode.Work),
+                    PetFeedItem("hidden", "正在推进 old-job", "3 秒内有新动作", TrafficLight.Green, 3, ReasonCode.Work),
+                ),
             )
         )
         advanceUntilIdle()
@@ -95,6 +100,7 @@ class TrafficViewModelTest {
         advanceUntilIdle()
 
         assertEquals(listOf(active), viewModel.uiState.value.snapshot.projects)
+        assertEquals(listOf("active"), viewModel.uiState.value.snapshot.feedItems.map { it.projectId })
         assertEquals(listOf(hidden), viewModel.uiState.value.hiddenProjects)
         assertEquals(setOf("hidden"), hiddenStore.savedIds)
     }

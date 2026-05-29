@@ -13,7 +13,9 @@ struct CodexTrafficSelfTest {
         try testRunningJobWithoutThreadIsGreen()
         try testOverallPrefersGreen()
         try testEncodesCompactPayloadContract()
+        try testEncodesPetFeedContract()
         try testTruncatesProjectsToFitByteBudgetAndReportsMoreCount()
+        try testTruncatesFeedToFitByteBudgetAndReportsMoreCount()
         try testLoadsSnapshotFromSQLiteStores()
         print("codex-traffic-selftest: all checks passed")
     }
@@ -182,7 +184,9 @@ struct CodexTrafficSelfTest {
                     reason: .work
                 )
             ],
-            moreCount: 0
+            moreCount: 0,
+            feedItems: [],
+            moreFeedCount: 0
         )
 
         let data = try PayloadEncoder(maxBytes: 480).encode(status)
@@ -190,6 +194,33 @@ struct CodexTrafficSelfTest {
 
         try expect(payload == #"{"v":1,"t":1780039000,"o":"g","p":[["a1b2c3d4","loading","g",4,"work"]],"m":0}"#, "payload contract")
         try expect(data.count <= 480, "payload max bytes")
+    }
+
+    private static func testEncodesPetFeedContract() throws {
+        let status = TrafficStatus(
+            version: 1,
+            timestamp: Date(timeIntervalSince1970: 1_780_039_000),
+            overall: .green,
+            projects: [],
+            moreCount: 0,
+            feedItems: [
+                PetFeedItem(
+                    projectID: "a1b2c3d4",
+                    title: "正在推进 loading",
+                    body: "4 秒内有新动作",
+                    light: .green,
+                    ageSeconds: 4,
+                    reason: .work
+                )
+            ],
+            moreFeedCount: 0
+        )
+
+        let data = try PayloadEncoder(maxBytes: 480).encode(status)
+        let payload = String(decoding: data, as: UTF8.self)
+
+        try expect(payload == #"{"v":1,"t":1780039000,"o":"g","p":[],"m":0,"f":[["a1b2c3d4","正在推进 loading","4 秒内有新动作","g",4,"work"]],"n":0}"#, "feed payload contract")
+        try expect(data.count <= 480, "feed payload max bytes")
     }
 
     private static func testTruncatesProjectsToFitByteBudgetAndReportsMoreCount() throws {
@@ -207,7 +238,9 @@ struct CodexTrafficSelfTest {
             timestamp: Date(timeIntervalSince1970: 1_780_039_000),
             overall: .green,
             projects: projects,
-            moreCount: 0
+            moreCount: 0,
+            feedItems: [],
+            moreFeedCount: 0
         )
 
         let data = try PayloadEncoder(maxBytes: 180).encode(status)
@@ -220,6 +253,39 @@ struct CodexTrafficSelfTest {
         try expect(data.count <= 180, "truncated max bytes")
         try expect(encodedProjects.count < projects.count, "truncated project count")
         try expect(moreCount == projects.count - encodedProjects.count, "truncated more count")
+    }
+
+    private static func testTruncatesFeedToFitByteBudgetAndReportsMoreCount() throws {
+        let feedItems = (0..<20).map { index in
+            PetFeedItem(
+                projectID: String(format: "%08x", index),
+                title: "动态 \(index)",
+                body: "这是一条比较长的桌宠动态 \(index)",
+                light: index == 0 ? .green : .yellow,
+                ageSeconds: index,
+                reason: index == 0 ? .work : .recent
+            )
+        }
+        let status = TrafficStatus(
+            version: 1,
+            timestamp: Date(timeIntervalSince1970: 1_780_039_000),
+            overall: .green,
+            projects: [],
+            moreCount: 0,
+            feedItems: feedItems,
+            moreFeedCount: 0
+        )
+
+        let data = try PayloadEncoder(maxBytes: 220).encode(status)
+        guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let encodedFeed = object["f"] as? [[Any]],
+              let moreFeedCount = object["n"] as? Int else {
+            throw SelfTestError.failed("feed truncation shape")
+        }
+
+        try expect(data.count <= 220, "truncated feed max bytes")
+        try expect(encodedFeed.count < feedItems.count, "truncated feed count")
+        try expect(moreFeedCount == feedItems.count - encodedFeed.count, "truncated feed more count")
     }
 
     private static func testLoadsSnapshotFromSQLiteStores() throws {

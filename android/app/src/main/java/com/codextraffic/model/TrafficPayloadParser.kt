@@ -19,6 +19,7 @@ class TrafficPayloadParser {
     fun parse(payload: String): TrafficSnapshot {
         val root = json.parseToJsonElement(payload).jsonObject
         val projects = root.array("p").mapNotNull(::parseProject)
+        val feedItems = root.array("f").mapNotNull(::parseFeedItem)
 
         return TrafficSnapshot(
             version = root.int("v"),
@@ -26,6 +27,8 @@ class TrafficPayloadParser {
             overall = TrafficLight.fromCode(root.string("o")),
             projects = projects,
             omittedCount = root.int("m"),
+            feedItems = feedItems,
+            omittedFeedCount = root.int("n"),
         )
     }
 
@@ -39,6 +42,20 @@ class TrafficPayloadParser {
             light = TrafficLight.fromCode(row[2].asString()),
             ageSeconds = row[3].asLong(),
             reason = ReasonCode.fromWireValue(row[4].asString()),
+        )
+    }
+
+    private fun parseFeedItem(element: JsonElement): PetFeedItem? {
+        val row = element as? JsonArray ?: return null
+        if (row.size < 6) return null
+
+        return PetFeedItem(
+            projectId = row[0].asString(),
+            title = row[1].asString(),
+            body = row[2].asString(),
+            light = TrafficLight.fromCode(row[3].asString()),
+            ageSeconds = row[4].asLong(),
+            reason = ReasonCode.fromWireValue(row[5].asString()),
         )
     }
 

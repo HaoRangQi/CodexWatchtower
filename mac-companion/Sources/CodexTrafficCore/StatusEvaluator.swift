@@ -52,13 +52,16 @@ public struct StatusEvaluator: Sendable {
         let overall = overallLight(for: statuses)
         let projects = Array(statuses.prefix(maxProjects))
         let moreCount = max(0, statuses.count - projects.count)
+        let feedItems = statuses.map(feedItem)
 
         return TrafficStatus(
             version: 1,
             timestamp: now,
             overall: overall,
             projects: projects,
-            moreCount: moreCount
+            moreCount: moreCount,
+            feedItems: feedItems,
+            moreFeedCount: 0
         )
     }
 
@@ -130,6 +133,51 @@ public struct StatusEvaluator: Sendable {
             return .yellow
         }
         return .red
+    }
+
+    private func feedItem(for project: ProjectStatus) -> PetFeedItem {
+        PetFeedItem(
+            projectID: project.id,
+            title: feedTitle(for: project),
+            body: feedBody(for: project),
+            light: project.light,
+            ageSeconds: project.ageSeconds,
+            reason: project.reason
+        )
+    }
+
+    private func feedTitle(for project: ProjectStatus) -> String {
+        switch project.reason {
+        case .work:
+            return "正在推进 \(project.name)"
+        case .recent:
+            return "\(project.name) 刚有动静"
+        case .idle:
+            return "\(project.name) 暂时安静"
+        case .stale:
+            return "\(project.name) 可能卡住"
+        case .blocked:
+            return "\(project.name) 需要处理阻塞"
+        case .codexOff:
+            return "\(project.name) 的 Codex 不在线"
+        }
+    }
+
+    private func feedBody(for project: ProjectStatus) -> String {
+        switch project.reason {
+        case .work:
+            return "\(project.ageSeconds) 秒内有新动作"
+        case .recent:
+            return "\(project.ageSeconds) 秒前更新，当前没确认推进"
+        case .idle:
+            return "超过近期窗口没有新活动"
+        case .stale:
+            return "运行任务超过预期，且没有进展信号"
+        case .blocked:
+            return "目标状态是 blocked，需要回到 Codex 看原因"
+        case .codexOff:
+            return "没有检测到 Codex 进程"
+        }
     }
 }
 

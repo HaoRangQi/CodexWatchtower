@@ -96,10 +96,12 @@ private fun TrafficUiState.withFilteredSnapshot(
 
     val hidden = snapshot.projects.filter { it.id in hiddenProjectIds }
     val visible = snapshot.projects.filterNot { it.id in hiddenProjectIds }
+    val visibleFeedItems = snapshot.feedItems.filterNot { it.projectId in hiddenProjectIds }
     return copy(
         snapshot = snapshot.copy(
             projects = visible,
             overall = visible.overallLight(),
+            feedItems = visibleFeedItems,
         ),
         hiddenProjects = hidden,
     )

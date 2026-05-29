@@ -15,7 +15,7 @@
 ## Payload
 
 ```json
-{"v":1,"t":1780039000,"o":"g","p":[["a1b2c3d4","loading","g",4,"work"]],"m":0}
+{"v":1,"t":1780039000,"o":"g","p":[["a1b2c3d4","loading","g",4,"work"]],"m":0,"f":[["a1b2c3d4","正在推进 loading","4 秒内有新动作","g",4,"work"]],"n":0}
 ```
 
 | Field | Meaning |
@@ -25,6 +25,11 @@
 | `o` | Overall light: `g`, `y`, or `r`. |
 | `p` | Project rows: `[id, name, light, ageSeconds, reason]`. |
 | `m` | Number of omitted project rows after truncation. |
+| `f` | Optional pet feed rows: `[projectId, title, body, light, ageSeconds, reason]`. |
+| `n` | Number of omitted pet feed rows after truncation. |
+
+`f` is generated from structured Codex status fields only. It does not carry
+full conversation text, `history.jsonl`, or large logs.
 
 ## Light Semantics
 
@@ -40,4 +45,3 @@
 - `stale`
 - `blocked`
 - `codex_off`
-
