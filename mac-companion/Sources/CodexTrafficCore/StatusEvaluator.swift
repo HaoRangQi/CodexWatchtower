@@ -18,16 +18,29 @@ public struct StatusEvaluator: Sendable {
         self.maxProjects = maxProjects
     }
 
-    public func evaluate(snapshot: CodexSnapshot, now: Date = Date()) -> TrafficStatus {
+    public func evaluate(
+        snapshot: CodexSnapshot,
+        now: Date = Date(),
+        events: [CodexRealtimeEvent] = []
+    ) -> TrafficStatus {
         var threadsByProject: [String: [CodexThread]] = [:]
         for thread in snapshot.threads {
             threadsByProject[thread.cwd, default: []].append(thread)
         }
 
-        let projectCWDs = Set(threadsByProject.keys).union(snapshot.jobs.map(\.cwd))
+        let projectCWDs = Set(threadsByProject.keys)
+            .union(snapshot.jobs.map(\.cwd))
+            .union(events.map(\.cwd))
+        let eventsByProject = Dictionary(grouping: events, by: \.cwd)
         var statuses: [ProjectStatus] = projectCWDs.map { cwd in
             let threads = threadsByProject[cwd] ?? []
-            return statusForProject(cwd: cwd, threads: threads, snapshot: snapshot, now: now)
+            return statusForProject(
+                cwd: cwd,
+                threads: threads,
+                snapshot: snapshot,
+                now: now,
+                events: eventsByProject[cwd] ?? []
+            )
         }
 
         if statuses.isEmpty, snapshot.codexProcessRunning {
@@ -43,8 +56,8 @@ public struct StatusEvaluator: Sendable {
         }
 
         statuses.sort {
-            if $0.light.priority != $1.light.priority {
-                return $0.light.priority > $1.light.priority
+            if $0.reason.priority != $1.reason.priority {
+                return $0.reason.priority < $1.reason.priority
             }
             return $0.ageSeconds < $1.ageSeconds
         }
@@ -52,7 +65,10 @@ public struct StatusEvaluator: Sendable {
         let overall = overallLight(for: statuses)
         let projects = Array(statuses.prefix(maxProjects))
         let moreCount = max(0, statuses.count - projects.count)
-        let feedItems = statuses.map(feedItem)
+        let realtimeFeedItems = events
+            .sorted { $0.timestamp > $1.timestamp }
+            .map { feedItem(for: $0, now: now) }
+        let feedItems = mergeFeedItems(realtimeFeedItems: realtimeFeedItems, derivedFeedItems: statuses.map(feedItem))
 
         return TrafficStatus(
             version: 1,
@@ -69,10 +85,13 @@ public struct StatusEvaluator: Sendable {
         cwd: String,
         threads: [CodexThread],
         snapshot: CodexSnapshot,
-        now: Date
+        now: Date,
+        events: [CodexRealtimeEvent]
     ) -> ProjectStatus {
         let latestThread = threads.max { $0.updatedAt < $1.updatedAt }
         let latestThreadAge = latestThread.map { max(0, Int(now.timeIntervalSince($0.updatedAt))) } ?? Int.max
+        let latestEvent = events.max { $0.timestamp < $1.timestamp }
+        let latestEventAge = latestEvent.map { max(0, Int(now.timeIntervalSince($0.timestamp))) }
         let threadIds = Set(threads.map(\.id))
         let jobs = snapshot.jobs.filter { job in
             job.cwd == cwd || threadIds.contains(job.threadId)
@@ -85,7 +104,10 @@ public struct StatusEvaluator: Sendable {
             : URL(fileURLWithPath: cwd).lastPathComponent
 
         let status: (TrafficLight, ReasonCode, Int)
-        if goals.contains(where: { $0.status == "blocked" }) {
+        if let latestEvent, let latestEventAge {
+            let mapped = projectStatus(for: latestEvent.kind)
+            status = (mapped.0, mapped.1, latestEventAge)
+        } else if goals.contains(where: { $0.status == "blocked" }) {
             status = (.red, .blocked, latestThreadAge)
         } else if let staleJob = staleRunningJob(in: jobs, now: now) {
             status = (.red, .stale, max(0, Int(now.timeIntervalSince(staleJob.updatedAt))))
@@ -126,6 +148,9 @@ public struct StatusEvaluator: Sendable {
     }
 
     private func overallLight(for projects: [ProjectStatus]) -> TrafficLight {
+        if projects.contains(where: { $0.reason == .stale || $0.reason == .blocked }) {
+            return .red
+        }
         if projects.contains(where: { $0.light == .green }) {
             return .green
         }
@@ -144,6 +169,54 @@ public struct StatusEvaluator: Sendable {
             ageSeconds: project.ageSeconds,
             reason: project.reason
         )
+    }
+
+    private func feedItem(for event: CodexRealtimeEvent, now: Date) -> PetFeedItem {
+        let mapped = projectStatus(for: event.kind)
+        return PetFeedItem(
+            projectID: String(SHA1.hexDigest(event.cwd).prefix(8)),
+            title: event.title,
+            body: event.body,
+            light: mapped.0,
+            ageSeconds: max(0, Int(now.timeIntervalSince(event.timestamp))),
+            reason: mapped.1
+        )
+    }
+
+    private func projectStatus(for eventKind: CodexRealtimeEventKind) -> (TrafficLight, ReasonCode) {
+        switch eventKind {
+        case .running:
+            return (.green, .work)
+        case .waitingInput:
+            return (.red, .blocked)
+        case .permissionRequired:
+            return (.red, .blocked)
+        case .completed:
+            return (.yellow, .recent)
+        case .failed:
+            return (.red, .stale)
+        case .networkStall:
+            return (.red, .stale)
+        case .message:
+            return (.yellow, .recent)
+        }
+    }
+
+    private func mergeFeedItems(
+        realtimeFeedItems: [PetFeedItem],
+        derivedFeedItems: [PetFeedItem]
+    ) -> [PetFeedItem] {
+        var seen = Set<String>()
+        var merged: [PetFeedItem] = []
+        for item in realtimeFeedItems + derivedFeedItems {
+            let key = "\(item.projectID)-\(item.title)-\(item.reason.rawValue)"
+            guard seen.contains(key) == false else {
+                continue
+            }
+            seen.insert(key)
+            merged.append(item)
+        }
+        return merged
     }
 
     private func feedTitle(for project: ProjectStatus) -> String {
@@ -187,6 +260,21 @@ private extension TrafficLight {
         case .green: 3
         case .yellow: 2
         case .red: 1
+        }
+    }
+}
+
+private extension ReasonCode {
+    var priority: Int {
+        switch self {
+        case .stale, .blocked, .codexOff:
+            return 0
+        case .work:
+            return 1
+        case .recent:
+            return 2
+        case .idle:
+            return 3
         }
     }
 }

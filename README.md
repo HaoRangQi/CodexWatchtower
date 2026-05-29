@@ -9,13 +9,13 @@ BSOD 蓝屏小机器人、极简状态短句、项目列表、宠物动态和项
 
 手机端可以直接隐藏不想看的项目；隐藏列表保存在 Android 本机，不会写回 Mac 或
 改变 BLE payload。被隐藏项目不再参与桌宠总状态，底部入口可随时恢复。
-向左滑动进入第二屏，可以看 companion 生成的宠物动态：它展示项目是否正在推进、
-刚有动静、疑似卡住、blocked 或 Codex 离线。第二屏按 Codex avatar overlay 的形态做
-成浮动通知托盘和小桌宠，不再是普通列表。小桌宠按动态优先级切换
-running / waiting / failed / idle 帧动画，动态行用呼吸状态点表示仍在刷新。
-当前动态只来自 SQLite 结构化状态字段，
-不读取完整会话正文、`history.jsonl` 或大日志。若手机连到旧 companion，Android 会从
-项目行派生动态兜底，避免第二屏空白。
+向左滑动进入第二屏，可以看 companion 生成的宠物动态：它优先展示 Codex hook 或脚本写入
+的实时事件，例如正在运行、等待输入、等待授权、完成、失败或网络疑似卡住；没有实时事件
+时再从 SQLite 结构化状态字段派生兜底动态。第二屏按 Codex avatar overlay 的形态做成浮动
+通知托盘和小桌宠，不再是普通列表。小桌宠按动态优先级切换 running / waiting / failed /
+idle 帧动画，动态行用呼吸状态点表示仍在刷新。companion 不读取完整会话正文、
+`history.jsonl` 或大日志。若手机连到旧 companion，Android 会从项目行派生动态兜底，
+避免第二屏空白。
 
 继续向左滑动进入第三屏 `项目信号`。它是偏极客画风的 HUD 仪表页，用雷达环、扫描线、
 信号柱和项目轨道展示多项目状态，用户可见文案保持中文，不是黑底终端或 JSON 文本页。
@@ -106,6 +106,53 @@ open "dist/Codex Traffic.app"
 BLE advertising because macOS Bluetooth privacy permission is granted to the app
 bundle identity. The companion updates every 2 seconds by default.
 
+## Realtime Events and Phone Push
+
+第二屏的真实实时数据入口是本机轻量事件文件：
+
+```text
+~/.codex-traffic/events.jsonl
+```
+
+写入事件：
+
+```bash
+scripts/codex-traffic-event.sh running "Codex 正在运行" "loading 有新动作"
+scripts/codex-traffic-event.sh waiting_input "等待你回复" "Codex 需要用户输入"
+scripts/codex-traffic-event.sh permission_required "等待授权" "需要批准命令或权限"
+scripts/codex-traffic-event.sh network_stall "网络可能卡住" "长时间没有新 token 或状态变化"
+scripts/codex-traffic-event.sh completed "任务完成" "回到项目确认结果"
+scripts/codex-traffic-event.sh failed "任务失败" "需要检查错误"
+```
+
+companion 每 2 秒读取最近事件，并优先把它们编码到 BLE payload 的 `f/n` 字段。事件只包含
+`cwd`、短标题、短正文和状态码，不包含会话正文。
+
+可选 ntfy 转发：
+
+```bash
+CODEX_TRAFFIC_NTFY_TOPIC="your-topic" \
+  scripts/codex-traffic-event.sh completed "Codex 任务完成" "回到项目确认结果"
+```
+
+如果要接现有 Codex `notify`，可以把 `~/.codex/config.toml` 的 `notify` 指向 wrapper：
+
+```toml
+notify = ["/Users/macos/Downloads/Projects/loading/scripts/codex-traffic-notify-wrapper.sh", "turn-ended"]
+```
+
+wrapper 会先写入 `~/.codex-traffic/events.jsonl`，再调用当前本机的 Codex Computer Use 通知程序，
+避免丢掉原有桌面通知。
+
+如果你使用的是新版 Codex hooks，可把 hook command 指到：
+
+```text
+/Users/macos/Downloads/Projects/loading/scripts/codex-traffic-hook.sh
+```
+
+这个脚本从 hook stdin 读取 JSON，识别 permission、request user input、stop、session start
+等事件，并写入同一个 `events.jsonl`。
+
 ## Run the Android App
 
 From this project:
@@ -134,6 +181,6 @@ android/app/build/outputs/apk/debug/app-debug.apk
 3. Grant Bluetooth permissions。
 4. Confirm the connection label changes to `已连接`。
 5. Confirm the high-fidelity pet, compact status text, and project list update as Codex activity changes。
-6. Swipe left and confirm the second screen shows `最新` and real project dynamic rows。
+6. Swipe left and confirm the second screen shows realtime event rows from `~/.codex-traffic/events.jsonl`。
 7. Swipe left again and confirm the third screen shows `项目信号` HUD。
 8. Tap `隐藏` on a project, then use `已隐藏 N 项 · 点此恢复` to restore it。

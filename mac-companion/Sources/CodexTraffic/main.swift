@@ -4,14 +4,20 @@ import Foundation
 let arguments = CommandLine.arguments.dropFirst()
 let once = arguments.contains("--once")
 let interval = argumentValue("--interval").flatMap(Double.init) ?? 2.0
+let eventLogURL = argumentValue("--events")
+    .map(URL.init(fileURLWithPath:))
+    ?? CodexEventStore.defaultEventLogURL
 
 let store = CodexStatusStore()
+let eventStore = CodexEventStore(eventLogURL: eventLogURL)
 let evaluator = StatusEvaluator()
 let encoder = PayloadEncoder(maxBytes: 480)
 
 func makePayload() throws -> Data {
     let snapshot = try store.loadSnapshot()
-    let status = evaluator.evaluate(snapshot: snapshot)
+    let now = Date()
+    let events = try eventStore.loadEvents(now: now)
+    let status = evaluator.evaluate(snapshot: snapshot, now: now, events: events)
     return try encoder.encode(status)
 }
 

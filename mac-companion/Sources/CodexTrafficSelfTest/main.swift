@@ -16,6 +16,10 @@ struct CodexTrafficSelfTest {
         try testEncodesPetFeedContract()
         try testTruncatesProjectsToFitByteBudgetAndReportsMoreCount()
         try testTruncatesFeedToFitByteBudgetAndReportsMoreCount()
+        try testLoadsRealtimeEventsFromJSONL()
+        try testRealtimePermissionEventOverridesDerivedWorkStatus()
+        try testRealtimeAttentionEventOverridesOverallGreen()
+        try testRealtimeWaitingInputNeedsAttention()
         try testLoadsSnapshotFromSQLiteStores()
         print("codex-traffic-selftest: all checks passed")
     }
@@ -286,6 +290,123 @@ struct CodexTrafficSelfTest {
         try expect(data.count <= 220, "truncated feed max bytes")
         try expect(encodedFeed.count < feedItems.count, "truncated feed count")
         try expect(moreFeedCount == feedItems.count - encodedFeed.count, "truncated feed more count")
+    }
+
+    private static func testLoadsRealtimeEventsFromJSONL() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let eventLogURL = root.appendingPathComponent("events.jsonl")
+        let eventLog = """
+        {"v":1,"ts":1780038998,"kind":"permission_required","cwd":"/tmp/loading","title":"等待授权","body":"需要批准命令"}
+        {"not":"a usable event"}
+
+        """
+        try eventLog.write(to: eventLogURL, atomically: true, encoding: .utf8)
+
+        let events = try CodexEventStore(eventLogURL: eventLogURL).loadEvents(
+            now: Date(timeIntervalSince1970: 1_780_039_000)
+        )
+
+        try expect(events == [
+            CodexRealtimeEvent(
+                timestamp: Date(timeIntervalSince1970: 1_780_038_998),
+                cwd: "/tmp/loading",
+                kind: .permissionRequired,
+                title: "等待授权",
+                body: "需要批准命令"
+            )
+        ], "load realtime events")
+    }
+
+    private static func testRealtimePermissionEventOverridesDerivedWorkStatus() throws {
+        let now = Date(timeIntervalSince1970: 1_780_039_000)
+        let snapshot = CodexSnapshot(
+            threads: [
+                CodexThread(id: "thread-1", cwd: "/tmp/loading", updatedAt: now.addingTimeInterval(-4))
+            ],
+            jobs: [],
+            goals: [],
+            codexProcessRunning: true
+        )
+        let event = CodexRealtimeEvent(
+            timestamp: now.addingTimeInterval(-2),
+            cwd: "/tmp/loading",
+            kind: .permissionRequired,
+            title: "等待授权",
+            body: "Codex 正在等你批准命令"
+        )
+
+        let result = StatusEvaluator().evaluate(snapshot: snapshot, now: now, events: [event])
+
+        try expect(result.overall == .red, "permission event overall")
+        try expect(result.projects.first == ProjectStatus(
+            id: "dbf343c9",
+            name: "loading",
+            light: .red,
+            ageSeconds: 2,
+            reason: .blocked
+        ), "permission event project")
+        try expect(result.feedItems.first == PetFeedItem(
+            projectID: "dbf343c9",
+            title: "等待授权",
+            body: "Codex 正在等你批准命令",
+            light: .red,
+            ageSeconds: 2,
+            reason: .blocked
+        ), "permission event feed")
+    }
+
+    private static func testRealtimeAttentionEventOverridesOverallGreen() throws {
+        let now = Date(timeIntervalSince1970: 1_780_039_000)
+        let snapshot = CodexSnapshot(
+            threads: [
+                CodexThread(id: "thread-1", cwd: "/tmp/loading", updatedAt: now.addingTimeInterval(-4)),
+                CodexThread(id: "thread-2", cwd: "/tmp/other", updatedAt: now.addingTimeInterval(-3))
+            ],
+            jobs: [],
+            goals: [],
+            codexProcessRunning: true
+        )
+        let event = CodexRealtimeEvent(
+            timestamp: now.addingTimeInterval(-2),
+            cwd: "/tmp/loading",
+            kind: .permissionRequired,
+            title: "等待授权",
+            body: "Codex 正在等你批准命令"
+        )
+
+        let result = StatusEvaluator().evaluate(snapshot: snapshot, now: now, events: [event])
+
+        try expect(result.overall == .red, "attention event wins overall")
+        try expect(result.projects.first?.reason == .blocked, "attention event sorted first")
+    }
+
+    private static func testRealtimeWaitingInputNeedsAttention() throws {
+        let now = Date(timeIntervalSince1970: 1_780_039_000)
+        let snapshot = CodexSnapshot(
+            threads: [
+                CodexThread(id: "thread-1", cwd: "/tmp/loading", updatedAt: now.addingTimeInterval(-30))
+            ],
+            jobs: [],
+            goals: [],
+            codexProcessRunning: true
+        )
+        let event = CodexRealtimeEvent(
+            timestamp: now.addingTimeInterval(-3),
+            cwd: "/tmp/loading",
+            kind: .waitingInput,
+            title: "等待你回复",
+            body: "Codex 需要用户输入"
+        )
+
+        let result = StatusEvaluator().evaluate(snapshot: snapshot, now: now, events: [event])
+
+        try expect(result.overall == .red, "waiting input overall")
+        try expect(result.projects.first?.reason == .blocked, "waiting input reason")
+        try expect(result.feedItems.first?.title == "等待你回复", "waiting input feed title")
     }
 
     private static func testLoadsSnapshotFromSQLiteStores() throws {

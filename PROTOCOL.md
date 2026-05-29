@@ -28,8 +28,36 @@
 | `f` | Optional pet feed rows: `[projectId, title, body, light, ageSeconds, reason]`. |
 | `n` | Number of omitted pet feed rows after truncation. |
 
-`f` is generated from structured Codex status fields only. It does not carry
-full conversation text, `history.jsonl`, or large logs.
+`f` prefers realtime event rows from `~/.codex-traffic/events.jsonl`, then falls
+back to derived structured Codex status rows. It does not carry full conversation
+text, `history.jsonl`, or large logs.
+
+## Realtime Event Spool
+
+Mac companion reads recent JSON Lines from:
+
+```text
+~/.codex-traffic/events.jsonl
+```
+
+Each row:
+
+```json
+{"v":1,"ts":1780039000,"kind":"permission_required","cwd":"/tmp/loading","title":"等待授权","body":"需要批准命令或权限"}
+```
+
+Allowed `kind` values:
+
+- `running`
+- `waiting_input`
+- `permission_required`
+- `completed`
+- `failed`
+- `network_stall`
+- `message`
+
+Events older than 15 minutes are ignored. Rows with malformed JSON or missing
+`cwd`/`kind`/`ts` are ignored.
 
 ## Light Semantics
 

@@ -81,6 +81,38 @@ public struct CodexSnapshot: Equatable, Sendable {
     }
 }
 
+public enum CodexRealtimeEventKind: String, Codable, Sendable {
+    case running
+    case waitingInput = "waiting_input"
+    case permissionRequired = "permission_required"
+    case completed
+    case failed
+    case networkStall = "network_stall"
+    case message
+}
+
+public struct CodexRealtimeEvent: Equatable, Sendable {
+    public let timestamp: Date
+    public let cwd: String
+    public let kind: CodexRealtimeEventKind
+    public let title: String
+    public let body: String
+
+    public init(
+        timestamp: Date,
+        cwd: String,
+        kind: CodexRealtimeEventKind,
+        title: String,
+        body: String
+    ) {
+        self.timestamp = timestamp
+        self.cwd = cwd
+        self.kind = kind
+        self.title = title
+        self.body = body
+    }
+}
+
 public struct ProjectStatus: Equatable, Sendable {
     public let id: String
     public let name: String

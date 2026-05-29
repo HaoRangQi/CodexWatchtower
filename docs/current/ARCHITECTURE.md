@@ -11,16 +11,23 @@ Android 工具链是共享本机依赖，放在 `/Users/macos/Downloads/AndroidT
 
 ## 数据来源
 
-Mac 端只读 Codex 本地 SQLite 状态：
+Mac 端有两个数据来源：
+
+1. 实时事件 spool：`~/.codex-traffic/events.jsonl`
+2. Codex 本地 SQLite 状态：
 
 - `~/.codex/state_5.sqlite`
 - `~/.codex/goals_1.sqlite`
 
-不读取会话正文、`history.jsonl` 或大日志。状态判断是启发式，不等同 Codex 私有内部运行态。
-第二屏“宠物动态”也只基于这些结构化状态字段生成，例如项目正在推进、近期更新、
-目标 blocked、任务 stale 或 Codex 进程不在线；它不是 Codex 原始聊天输出镜像。
-新 companion 会在 BLE payload 中发送 `f/n` 动态字段；Android parser 兼容旧 payload，
-没有 `f/n` 时会从 `p` 项目行派生同语义的动态卡片，避免手机端出现空白第二屏。
+实时事件由 Codex hook、手动脚本或自动化写入，只保存 `cwd`、短标题、短正文和状态码。
+它用于表达 SQLite 无法稳定判断的状态，例如等待用户输入、等待权限、任务完成、失败或
+网络疑似卡住。没有实时事件时，Mac companion 再从 SQLite 结构化状态字段派生项目正在推进、
+近期更新、目标 blocked、任务 stale 或 Codex 进程不在线等兜底动态。
+
+companion 不读取会话正文、`history.jsonl` 或大日志。状态判断仍是启发式，不等同 Codex
+私有内部运行态，也不是 Codex 原始聊天输出镜像。新 companion 会在 BLE payload 中发送 `f/n`
+动态字段；Android parser 兼容旧 payload，没有 `f/n` 时会从 `p` 项目行派生同语义的动态卡片，
+避免手机端出现空白第二屏。
 
 ## BLE 契约
 
@@ -75,6 +82,11 @@ Android 端持有本机隐藏项目列表，存储在 `SharedPreferences`。用�
 ## Mac 运行方式
 
 BLE 广播必须通过 `mac-companion/dist/Codex Traffic.app` 启动，因为 macOS 蓝牙隐私权限绑定 app bundle 身份。`swift run codex-traffic --once` 只用于调试 payload，不作为 BLE 常驻运行方式。
+companion 默认每 2 秒读取 SQLite 和 `~/.codex-traffic/events.jsonl`。可用
+`scripts/codex-traffic-event.sh` 写入实时事件；如需保留现有 Codex `notify`，使用
+`scripts/codex-traffic-notify-wrapper.sh` 先写事件再转发给原有通知程序。
+新版 Codex hooks 可直接调用 `scripts/codex-traffic-hook.sh`，它从 hook stdin JSON 中识别
+permission、request user input、stop、session start 等事件并写入同一个事件文件。
 
 ## 验证基线
 
