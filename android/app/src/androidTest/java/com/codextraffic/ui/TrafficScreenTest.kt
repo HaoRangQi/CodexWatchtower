@@ -3,7 +3,9 @@ package com.codextraffic.ui
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -44,16 +46,15 @@ class TrafficScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("CODEX 桌宠").assertIsDisplayed()
+        composeRule.onAllNodesWithText("CODEX 桌宠").assertCountEquals(0)
         composeRule.onNodeWithTag("pet_bot").assertIsDisplayed()
         composeRule.onNodeWithContentDescription("蓝屏白壳桌宠").assertIsDisplayed()
-        composeRule.onNodeWithTag("bot_panel").assertIsDisplayed()
         composeRule.onNodeWithTag("bot_summary").assertIsDisplayed()
         composeRule.onNodeWithText("已连接").assertIsDisplayed()
         composeRule.onNodeWithText("1 个项目正在推进").assertIsDisplayed()
-        composeRule.onNodeWithText("项目看板").assertIsDisplayed()
-        composeRule.onNodeWithText("LOADING").assertIsDisplayed()
-        composeRule.onNodeWithText("4 秒 · 正在干活").assertIsDisplayed()
+        composeRule.onAllNodesWithText("项目看板").assertCountEquals(0)
+        composeRule.onNodeWithText("loading").assertIsDisplayed()
+        composeRule.onNodeWithText("4 秒").assertIsDisplayed()
         composeRule.onNodeWithText("推进中").assertIsDisplayed()
     }
 
@@ -72,7 +73,7 @@ class TrafficScreenTest {
 
         composeRule.onNodeWithTag("connection_status").assertTextEquals("未连接")
         composeRule.onNodeWithTag("pet_bot").assertIsDisplayed()
-        composeRule.onNodeWithText("我暂时听不到 Mac companion 的信号。").assertIsDisplayed()
-        composeRule.onNodeWithText("桌宠还没收到项目信号").assertIsDisplayed()
+        composeRule.onNodeWithTag("bot_summary").assertTextEquals("未连接")
+        composeRule.onNodeWithText("暂无项目").assertIsDisplayed()
     }
 }

@@ -21,9 +21,9 @@ Android 主界面从“红绿灯”改为 BSOD 蓝屏桌宠监控：
 - 顶部保留 BLE 连接状态，连接状态不参与业务状态颜色语义。
 - 主视觉优先使用 Codex app 自带的 BSOD spritesheet，显示蓝色屏幕脸、白色机身、短天线、粉色脸颊和小手小脚。
 - BSOD spritesheet 作为本机专有资源同步到 `android/app/src/main/assets/codex_bsod_spritesheet.webp`，不提交进仓库；资源缺失时回退到内置绘制版本。
-- 项目整体情况通过桌宠 mood、状态气泡和中文短句表达。
-- 项目列表改为“项目看板”，按需要关注优先排序，再按最近活动时间排序。
-- 背景和面板尽量使用纯黑，只有眼睛、胸屏、边框和状态提示使用少量亮色，适配旧手机常亮和 OLED 省电。
+- 项目整体情况通过桌宠 mood 和中文短句表达。
+- 项目列表改为极简行列表，按需要关注优先排序，再按最近活动时间排序。
+- 背景和面板尽量使用纯黑，减少标题、方框和长说明，只有眼睛、胸屏、连接状态和项目提示使用少量亮色，适配旧手机常亮和 OLED 省电。
 - BLE 协议和 Mac companion 状态聚合逻辑保持不变，继续使用 `g/y/r` 紧凑状态码作为传输层契约。
 
 ## 依据
@@ -50,6 +50,6 @@ Android 主界面从“红绿灯”改为 BSOD 蓝屏桌宠监控：
 
 ## 验证
 
-- Android Compose 测试改为断言 `CODEX 桌宠`、`pet_bot`、`bot_summary` 和中文项目状态。
+- Android Compose 测试改为断言旧标题/看板已移除、`pet_bot`、`bot_summary` 和中文项目状态。
 - Android 单元测试继续覆盖 payload parsing 和 ViewModel 状态流。
 - 构建验证使用 `./gradlew testDebugUnitTest assembleDebug`。

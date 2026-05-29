@@ -7,13 +7,13 @@ import android.graphics.Rect as AndroidRect
 import android.graphics.RectF
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -60,7 +59,6 @@ import kotlin.math.min
 private val Ink = Color(0xFFE8E1CA)
 private val Panel = Color.Black
 private val PanelDark = Color.Black
-private val GridLine = Color(0xFF171717)
 private val BotShell = Color(0xFFECEFF4)
 private val BotShellDark = Color(0xFF5E6978)
 private val BotShadow = Color(0xFF131820)
@@ -71,6 +69,7 @@ private val StatusYellow = Color(0xFFE9C846)
 private val StatusRed = Color(0xFFE34A4A)
 private val StatusBlue = Color(0xFF69B7FF)
 private val Muted = Color(0xFF747474)
+private val Dim = Color(0xFF303030)
 private const val CodexBsodAssetFile = "codex_bsod_spritesheet.webp"
 private const val BsodFrameWidth = 192
 private const val BsodFrameHeight = 208
@@ -116,12 +115,13 @@ fun TrafficScreen(uiState: TrafficUiState) {
         modifier = Modifier
             .fillMaxSize()
             .background(PanelDark)
-            .padding(18.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Header(uiState.connectionStatus)
-        Spacer(Modifier.height(14.dp))
+        ConnectionPill(uiState.connectionStatus)
+        Spacer(Modifier.height(4.dp))
         BotStatusPanel(summary)
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
         ProjectList(
             projects = sortedProjects,
             omittedCount = uiState.snapshot.omittedCount,
@@ -130,27 +130,25 @@ fun TrafficScreen(uiState: TrafficUiState) {
 }
 
 @Composable
-private fun Header(connectionStatus: ConnectionStatus) {
+private fun ConnectionPill(connectionStatus: ConnectionStatus) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(
-            text = "CODEX 桌宠",
-            color = Ink,
-            fontWeight = FontWeight.Bold,
-            fontSize = 22.sp,
-            letterSpacing = 0.sp,
+        Box(
+            modifier = Modifier
+                .size(7.dp)
+                .background(connectionStatus.accent(), CircleShape),
         )
+        Spacer(Modifier.width(6.dp))
         Text(
             modifier = Modifier
-                .border(2.dp, connectionStatus.accent())
-                .padding(horizontal = 8.dp, vertical = 5.dp)
+                .padding(horizontal = 2.dp, vertical = 3.dp)
                 .testTag("connection_status"),
             text = connectionStatus.label(),
             color = connectionStatus.accent(),
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             letterSpacing = 0.sp,
         )
     }
@@ -161,21 +159,19 @@ private fun BotStatusPanel(summary: BotSummary) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, GridLine, RoundedCornerShape(8.dp))
-            .background(Panel, RoundedCornerShape(8.dp))
-            .padding(14.dp)
+            .background(Panel)
             .testTag("bot_panel"),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         PetBot(
             mood = summary.mood,
             modifier = Modifier
-                .fillMaxWidth(0.82f)
-                .widthIn(max = 260.dp)
+                .fillMaxWidth(0.98f)
+                .widthIn(max = 430.dp)
                 .aspectRatio(1f)
                 .testTag("pet_bot"),
         )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(2.dp))
         StatusBubble(
             summary = summary,
             modifier = Modifier.fillMaxWidth(),
@@ -198,7 +194,6 @@ private fun PetBot(
     Canvas(
         modifier = modifier
             .background(Color.Black)
-            .border(1.dp, GridLine, RoundedCornerShape(8.dp))
             .semantics { contentDescription = "蓝屏白壳桌宠" },
     ) {
         if (bsodSpritesheet != null) {
@@ -218,10 +213,10 @@ private fun DrawScope.drawBsodPet(spritesheet: Bitmap, mood: BotMood) {
         (frame.column + 1) * BsodFrameWidth,
         (frame.row + 1) * BsodFrameHeight,
     )
-    val targetWidth = side * 0.76f
+    val targetWidth = side * 0.95f
     val targetHeight = targetWidth * BsodFrameHeight / BsodFrameWidth
     val left = (size.width - targetWidth) / 2f
-    val top = (size.height - targetHeight) / 2f - side * 0.02f
+    val top = (size.height - targetHeight) / 2f - side * 0.05f
     val target = RectF(left, top, left + targetWidth, top + targetHeight)
 
     drawRoundRect(
@@ -312,34 +307,29 @@ private fun StatusBubble(
 ) {
     Column(
         modifier = modifier
-            .border(2.dp, summary.mood.accent.copy(alpha = 0.62f), RoundedCornerShape(6.dp))
-            .background(PanelDark, RoundedCornerShape(6.dp))
-            .padding(12.dp),
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             modifier = Modifier.testTag("bot_summary"),
             text = summary.title,
             color = summary.mood.accent,
             fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
+            fontSize = 20.sp,
             letterSpacing = 0.sp,
         )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = summary.detail,
-            color = Ink,
-            fontSize = 13.sp,
-            lineHeight = 18.sp,
-            letterSpacing = 0.sp,
-        )
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = summary.action,
-            color = Muted,
-            fontSize = 12.sp,
-            lineHeight = 17.sp,
-            letterSpacing = 0.sp,
-        )
+        if (summary.detail.isNotBlank()) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = summary.detail,
+                color = Muted,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                letterSpacing = 0.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -351,34 +341,34 @@ private fun ProjectList(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .border(3.dp, GridLine)
             .background(Panel)
-            .padding(12.dp)
+            .padding(horizontal = 4.dp)
             .testTag("project_list"),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text("项目看板", color = Ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            if (omittedCount > 0) {
-                Text("另有 $omittedCount 项", color = Muted, fontSize = 13.sp)
-            }
-        }
-        Spacer(Modifier.height(8.dp))
         if (projects.isEmpty()) {
             Text(
                 modifier = Modifier.testTag("empty_projects"),
-                text = "桌宠还没收到项目信号",
+                text = "暂无项目",
                 color = Muted,
-                fontSize = 14.sp,
+                fontSize = 12.sp,
             )
         } else {
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 items(projects, key = { it.id }) { project ->
                     ProjectRow(project)
+                }
+                if (omittedCount > 0) {
+                    item {
+                        Text(
+                            text = "+$omittedCount",
+                            color = Dim,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(horizontal = 2.dp, vertical = 3.dp),
+                        )
+                    }
                 }
             }
         }
@@ -392,42 +382,39 @@ private fun ProjectRow(project: ProjectTraffic) {
         modifier = Modifier
             .fillMaxWidth()
             .background(PanelDark)
-            .border(2.dp, GridLine)
-            .padding(horizontal = 10.dp, vertical = 9.dp)
+            .padding(horizontal = 4.dp, vertical = 5.dp)
             .testTag("project_${project.id}"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .size(20.dp)
-                .background(status.color, CircleShape)
-                .border(1.dp, Color(0xFF050505), CircleShape),
+                .size(9.dp)
+                .background(status.color, CircleShape),
         )
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = project.name.uppercase(),
+                text = project.name,
                 color = Ink,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                letterSpacing = 0.sp,
-            )
-            Text(
-                text = "${project.ageSeconds} 秒 · ${project.reason.label()}",
-                color = Muted,
-                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                fontSize = 13.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 letterSpacing = 0.sp,
             )
         }
         Text(
+            text = "${project.ageSeconds} 秒",
+            color = Muted,
+            fontSize = 11.sp,
+            letterSpacing = 0.sp,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
             text = status.text,
             color = status.color,
-            fontWeight = FontWeight.Bold,
-            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
             letterSpacing = 0.sp,
         )
     }
@@ -444,8 +431,7 @@ private fun TrafficUiState.summary(): BotSummary {
         return BotSummary(
             mood = BotMood.Offline,
             title = connectionStatus.label(),
-            detail = "我暂时听不到 Mac companion 的信号。",
-            action = connectionStatus.actionText(),
+            detail = connectionStatus.actionText(),
         )
     }
 
@@ -454,8 +440,7 @@ private fun TrafficUiState.summary(): BotSummary {
         return BotSummary(
             mood = BotMood.Sleepy,
             title = "待机中",
-            detail = "桌宠还没收到项目信号。",
-            action = "先保持 companion 运行，等 Codex 有动作后我会盯着。",
+            detail = "暂无项目",
         )
     }
 
@@ -467,29 +452,25 @@ private fun TrafficUiState.summary(): BotSummary {
         attention > 0 -> BotSummary(
             mood = BotMood.Alert,
             title = "$attention 个项目需要看一眼",
-            detail = "可能是卡住、阻塞，或 Codex 已经不在运行。",
-            action = "优先看列表最上面的项目。",
+            detail = "列表顶部优先处理",
         )
 
         working > 0 -> BotSummary(
             mood = BotMood.Happy,
             title = "$working 个项目正在推进",
-            detail = "我会每 2 秒刷新一次状态，先让它干活。",
-            action = "不用一直盯着，有异常我会把项目顶到前面。",
+            detail = "",
         )
 
         recent > 0 -> BotSummary(
             mood = BotMood.Watch,
             title = "最近有动静",
-            detail = "项目刚活跃过，但当前没有明确推进信号。",
-            action = "可以先放着观察一会儿。",
+            detail = "观察中",
         )
 
         else -> BotSummary(
             mood = BotMood.Sleepy,
             title = "现在比较安静",
-            detail = "没有项目显示正在推进。",
-            action = "如果你预期它在跑，可以回到 Codex 看是否等待输入。",
+            detail = "没有推进信号",
         )
     }
 }
@@ -513,15 +494,6 @@ private fun ProjectTraffic.statusLabel(): ProjectStatusLabel = when (reason) {
     ReasonCode.Stale -> ProjectStatusLabel("卡住?", StatusRed)
     ReasonCode.Blocked -> ProjectStatusLabel("阻塞", StatusRed)
     ReasonCode.CodexOff -> ProjectStatusLabel("离线", StatusRed)
-}
-
-private fun ReasonCode.label(): String = when (this) {
-    ReasonCode.Work -> "正在干活"
-    ReasonCode.Recent -> "最近活跃"
-    ReasonCode.Idle -> "空闲"
-    ReasonCode.Stale -> "疑似卡住"
-    ReasonCode.Blocked -> "已阻塞"
-    ReasonCode.CodexOff -> "Codex 未运行"
 }
 
 private fun ConnectionStatus.label(): String = when (this) {
@@ -563,7 +535,6 @@ private data class BotSummary(
     val mood: BotMood,
     val title: String,
     val detail: String,
-    val action: String,
 )
 
 private enum class EyePattern {
