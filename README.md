@@ -15,6 +15,8 @@ BSOD 蓝屏小机器人、极简状态短句和项目列表。
 
 Android 会优先加载本机同步的 Codex BSOD spritesheet。该资源来自本机
 `/Applications/Codex.app`，不提交进仓库；缺失时 app 会回退到内置绘制版本。
+桌宠动画复用 Codex avatar 原型的 8×9 spritesheet 帧序列，按推进中、刚动过、
+需要看一眼、待机和离线状态切换 running / waiting / failed / idle / waving 动作。
 
 ## Projects
 

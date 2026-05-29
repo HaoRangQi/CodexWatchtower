@@ -10,6 +10,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -82,6 +84,9 @@ private val Dim = Color(0xFF303030)
 private const val CodexBsodAssetFile = "codex_bsod_spritesheet.webp"
 private const val BsodFrameWidth = 192
 private const val BsodFrameHeight = 208
+private const val AvatarColumns = 8
+private const val AvatarRows = 9
+private const val IdleSlowdown = 6
 
 @Composable
 fun CodexTrafficApp(viewModel: TrafficViewModel) {
@@ -216,6 +221,7 @@ private fun PetBot(
 ) {
     val context = LocalContext.current
     val motion = if (motionEnabled) rememberPetMotion(mood) else PetMotion.Still
+    val spriteFrame = rememberPetSpriteFrame(mood, motionEnabled)
     val bsodSpritesheet = remember(context) {
         runCatching {
             context.assets.open(CodexBsodAssetFile).use(BitmapFactory::decodeStream)
@@ -235,7 +241,7 @@ private fun PetBot(
             .semantics { contentDescription = "蓝屏白壳桌宠" },
     ) {
         if (bsodSpritesheet != null) {
-            drawBsodPet(bsodSpritesheet, mood)
+            drawBsodPet(bsodSpritesheet, spriteFrame)
         } else {
             drawPet(mood)
         }
@@ -280,9 +286,35 @@ private fun rememberPetMotion(mood: BotMood): PetMotion {
     )
 }
 
-private fun DrawScope.drawBsodPet(spritesheet: Bitmap, mood: BotMood) {
+@Composable
+private fun rememberPetSpriteFrame(
+    mood: BotMood,
+    animationEnabled: Boolean,
+): SpriteFrame {
+    var frame by remember(mood) { mutableStateOf(mood.animation.firstFrame) }
+
+    LaunchedEffect(mood, animationEnabled) {
+        val animation = mood.animation
+        frame = animation.firstFrame
+        if (!animationEnabled || animation.frames.size == 1) {
+            return@LaunchedEffect
+        }
+
+        var startedAt: Long? = null
+        while (true) {
+            val now = withInfiniteAnimationFrameMillis { it }
+            if (startedAt == null) {
+                startedAt = now
+            }
+            frame = animation.frameAt(now - startedAt)
+        }
+    }
+
+    return frame
+}
+
+private fun DrawScope.drawBsodPet(spritesheet: Bitmap, frame: SpriteFrame) {
     val side = min(size.width, size.height)
-    val frame = mood.bsodFrame
     val source = AndroidRect(
         frame.column * BsodFrameWidth,
         frame.row * BsodFrameHeight,
@@ -690,34 +722,93 @@ private data class PetMotion(
     }
 }
 
-private enum class EyePattern {
-    Bright,
-    Watch,
-    Alert,
-    Sleep,
-    Offline,
-}
-
 private enum class BotMood(
     val accent: Color,
     val eyeColor: Color,
-    val bellyText: String,
-    val eyePattern: EyePattern,
-    val bsodFrame: SpriteFrame,
+    val animation: SpriteAnimation,
     val motionMillis: Int,
     val bobPx: Float,
     val swayPx: Float,
     val rotationDegrees: Float,
     val scalePulse: Float,
 ) {
-    Happy(StatusGreen, StatusGreen, "忙", EyePattern.Bright, SpriteFrame(row = 3, column = 2), 1250, 5f, 2.4f, 1.3f, 0.010f),
-    Watch(StatusYellow, StatusYellow, "看", EyePattern.Watch, SpriteFrame(row = 0, column = 0), 1650, 3.8f, 1.8f, 0.9f, 0.007f),
-    Alert(StatusRed, StatusRed, "!!!", EyePattern.Alert, SpriteFrame(row = 5, column = 4), 900, 6f, 3f, 1.8f, 0.012f),
-    Sleepy(Muted, Color(0xFF5C5C5C), "歇", EyePattern.Sleep, SpriteFrame(row = 0, column = 1), 2200, 2.5f, 0.8f, 0.4f, 0.004f),
-    Offline(StatusBlue, Color(0xFF4E6470), "等", EyePattern.Offline, SpriteFrame(row = 5, column = 1), 1900, 3f, 1.2f, 0.6f, 0.005f),
+    Happy(StatusGreen, StatusGreen, AvatarAnimations.Running, 1250, 5f, 2.4f, 1.3f, 0.010f),
+    Watch(StatusYellow, StatusYellow, AvatarAnimations.Waiting, 1650, 3.8f, 1.8f, 0.9f, 0.007f),
+    Alert(StatusRed, StatusRed, AvatarAnimations.Failed, 900, 6f, 3f, 1.8f, 0.012f),
+    Sleepy(Muted, Color(0xFF5C5C5C), AvatarAnimations.Idle, 2200, 2.5f, 0.8f, 0.4f, 0.004f),
+    Offline(StatusBlue, Color(0xFF4E6470), AvatarAnimations.Waving, 1900, 3f, 1.2f, 0.6f, 0.005f),
 }
 
 private data class SpriteFrame(
     val row: Int,
     val column: Int,
+    val durationMs: Int = 140,
 )
+
+private data class SpriteAnimation(
+    val frames: List<SpriteFrame>,
+    val loopStartIndex: Int = 0,
+) {
+    val firstFrame: SpriteFrame = frames.first()
+
+    fun frameAt(elapsedMs: Long): SpriteFrame {
+        if (frames.size == 1) {
+            return firstFrame
+        }
+
+        val introDuration = frames.take(loopStartIndex).sumOf { it.durationMs }
+        val loopFrames = frames.drop(loopStartIndex).ifEmpty { frames }
+        val loopDuration = loopFrames.sumOf { it.durationMs }.coerceAtLeast(1)
+        val position = if (elapsedMs < introDuration) {
+            elapsedMs.toInt()
+        } else {
+            introDuration + ((elapsedMs - introDuration) % loopDuration).toInt()
+        }
+
+        var cursor = 0
+        for (frame in frames.take(loopStartIndex) + loopFrames) {
+            cursor += frame.durationMs
+            if (position < cursor) {
+                return frame
+            }
+        }
+        return loopFrames.last()
+    }
+}
+
+private object AvatarAnimations {
+    val Idle = SpriteAnimation(
+        frames = listOf(
+            SpriteFrame(row = 0, column = 0, durationMs = 280 * IdleSlowdown),
+            SpriteFrame(row = 0, column = 1, durationMs = 110 * IdleSlowdown),
+            SpriteFrame(row = 0, column = 2, durationMs = 110 * IdleSlowdown),
+            SpriteFrame(row = 0, column = 3, durationMs = 140 * IdleSlowdown),
+            SpriteFrame(row = 0, column = 4, durationMs = 140 * IdleSlowdown),
+            SpriteFrame(row = 0, column = 5, durationMs = 320 * IdleSlowdown),
+        ),
+    )
+    val Running = loop(row = 7, count = 6, durationMs = 120, lastDurationMs = 220)
+    val Waving = loop(row = 3, count = 4, durationMs = 140, lastDurationMs = 280)
+    val Waiting = loop(row = 6, count = 6, durationMs = 150, lastDurationMs = 260)
+    val Failed = loop(row = 5, count = 8, durationMs = 140, lastDurationMs = 240)
+    val Review = loop(row = 8, count = 6, durationMs = 150, lastDurationMs = 280)
+
+    private fun loop(
+        row: Int,
+        count: Int,
+        durationMs: Int,
+        lastDurationMs: Int,
+    ): SpriteAnimation {
+        val actionFrames = List(count) { column ->
+            SpriteFrame(
+                row = row,
+                column = column,
+                durationMs = if (column == count - 1) lastDurationMs else durationMs,
+            )
+        }
+        return SpriteAnimation(
+            frames = actionFrames + actionFrames + actionFrames + Idle.frames,
+            loopStartIndex = actionFrames.size * 3,
+        )
+    }
+}
