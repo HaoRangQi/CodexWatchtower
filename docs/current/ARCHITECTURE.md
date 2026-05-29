@@ -2,10 +2,10 @@
 
 ## 系统边界
 
-Codex 红绿灯 v1 由两个运行时组成：
+Codex 桌宠由两个运行时组成：
 
 - macOS companion：Swift CLI 代码，通过 `.app` bundle 身份运行，作为 BLE Peripheral 广播状态。
-- Android app：Kotlin + Jetpack Compose，作为 BLE Central/GATT Client 扫描、连接、读取状态并显示红绿灯。
+- Android app：Kotlin + Jetpack Compose，作为 BLE Central/GATT Client 扫描、连接、读取状态，并显示像素桌宠监控界面。
 
 Android 工具链是共享本机依赖，放在 `/Users/macos/Downloads/AndroidToolchain`，不属于本仓库。
 
@@ -32,15 +32,23 @@ Android 连接后请求 MTU 517；失败时继续使用普通 read。为兼容�
 
 ## 状态语义
 
-- 绿：Codex 正在干活。
-- 黄：最近有活动但当前不确定或等待。
-- 红：空闲、Codex 未运行、blocked，或疑似卡住。
+协议层仍保留 `g/y/r` 紧凑状态码：
 
-总灯优先级：任一项目绿则绿；否则任一项目黄则黄；否则红。
+- `g`：Codex 正在干活。
+- `y`：最近有活动但当前不确定或等待。
+- `r`：空闲、Codex 未运行、blocked，或疑似卡住。
+
+Android UI 不再以红绿灯为主视觉，而是把状态映射到桌宠 mood、状态气泡和项目行标签。项目行仍保留颜色辅助，但核心提示是“推进中 / 观察 / 需要看一眼 / 阻塞 / 离线”等中文语义。
 
 ## Android 行为
 
-Android UI 用户可见文案使用中文。连接状态单独显示，不混入红黄绿状态语义。
+Android UI 用户可见文案使用中文。连接状态单独显示，不混入项目状态语义。
+
+主界面由三层组成：
+
+1. 顶部标题和 BLE 连接状态。
+2. 像素桌宠和状态气泡，表达整体项目情况。
+3. 项目看板，按需要关注优先排序，再按最近活动时间排序。
 
 扫描策略：
 
@@ -68,4 +76,4 @@ source ../scripts/use-android-toolchain.sh
 ./gradlew testDebugUnitTest assembleDebug
 ```
 
-真机验收使用 `ONEPLUS A6013` 无线 ADB 验证过：发现 `Codex Traffic`、GATT connected、发现 characteristic、持续收到 payload，UI 显示中文 `已连接`、`工作中`、项目列表。
+真机验收使用 `ONEPLUS A6013` 无线 ADB 验证过：发现 `Codex Traffic`、GATT connected、发现 characteristic、持续收到 payload，UI 显示中文 `已连接` 和项目状态。

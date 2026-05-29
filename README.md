@@ -1,28 +1,34 @@
-# Codex Traffic Light
+# Codex 桌宠
 
-Pixel-style Android traffic light for monitoring local Codex activity from a
-phone. A macOS companion reads local Codex state and broadcasts a compact BLE
-status payload. The Android app connects to that BLE service and renders a
-green/yellow/red project overview.
+一台旧 Android 手机可以摆在旁边，当作 Codex 项目状态桌宠。macOS companion
+只读本机 Codex 状态，通过 BLE 广播 compact JSON；Android app 连接后显示像素
+机器人、状态气泡和项目看板。
+
+核心目标不是“显示一个颜色”，而是让用户不用一直盯着 Codex：桌宠会把正在推进、
+近期有动静、需要介入或可能卡住的项目排出来。
 
 ## Projects
 
-- `mac-companion/`: Swift command-line BLE peripheral for macOS.
-- `android/`: Kotlin + Jetpack Compose Android app.
+- `mac-companion/`：Swift command-line BLE peripheral for macOS。
+- `android/`：Kotlin + Jetpack Compose Android app。
 
 ## Status Semantics
 
-- Green: Codex is doing work.
-- Yellow: recent activity exists, but the current state is uncertain or waiting.
-- Red: idle, Codex is not running, blocked, or a running job looks stale.
+BLE 协议仍使用 `g/y/r` 作为紧凑状态码，Android UI 会把它们翻译成桌宠表情和中文提示：
+
+- `g`：Codex 正在干活，桌宠显示推进中。
+- `y`：近期有活动但当前不确定或等待，桌宠显示观察中。
+- `r`：空闲、Codex 未运行、blocked，或疑似卡住，桌宠提示需要看一眼。
+
+连接状态单独显示，不混入项目状态语义。
 
 ## BLE Contract
 
-- Device name: `Codex Traffic`
-- Service UUID: `4F4C0001-6C6F-6164-696E-672D636F6465`
-- Status characteristic UUID: `4F4C0002-6C6F-6164-696E-672D636F6465`
-- Characteristic properties: `read`, `notify`
-- Payload: compact JSON, max 480 bytes.
+- Device name：`Codex Traffic`
+- Service UUID：`4F4C0001-6C6F-6164-696E-672D636F6465`
+- Status characteristic UUID：`4F4C0002-6C6F-6164-696E-672D636F6465`
+- Characteristic properties：`read`、`notify`
+- Payload：compact JSON，max 480 bytes。
 
 ```json
 {
@@ -88,9 +94,8 @@ android/app/build/outputs/apk/debug/app-debug.apk
 
 ## Manual Acceptance
 
-1. On the Mac, run `cd mac-companion && ./scripts/build-app.sh && open "dist/Codex Traffic.app"`.
-2. On Android, install and open the app.
-3. Grant Bluetooth permissions.
-4. Confirm the connection label changes to `CONNECTED`.
-5. Confirm the top traffic light and project list update as Codex activity
-   changes.
+1. On the Mac, run `cd mac-companion && ./scripts/build-app.sh && open "dist/Codex Traffic.app"`。
+2. On Android, install and open the app。
+3. Grant Bluetooth permissions。
+4. Confirm the connection label changes to `已连接`。
+5. Confirm the pixel pet, status bubble, and project board update as Codex activity changes。

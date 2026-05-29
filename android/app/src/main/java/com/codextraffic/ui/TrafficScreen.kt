@@ -7,12 +7,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
@@ -23,7 +25,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.testTag
@@ -36,16 +37,19 @@ import com.codextraffic.TrafficViewModel
 import com.codextraffic.model.ConnectionStatus
 import com.codextraffic.model.ProjectTraffic
 import com.codextraffic.model.ReasonCode
-import com.codextraffic.model.TrafficLight
 import com.codextraffic.model.TrafficUiState
 
 private val Ink = Color(0xFFE7E1CC)
 private val Panel = Color(0xFF202020)
 private val PanelDark = Color(0xFF141414)
 private val GridLine = Color(0xFF333333)
+private val BotShell = Color(0xFFD9D1BD)
+private val BotShadow = Color(0xFF9E9586)
+private val BotScreen = Color(0xFF101716)
 private val PixelGreen = Color(0xFF36D66B)
 private val PixelYellow = Color(0xFFE9C846)
 private val PixelRed = Color(0xFFE34A4A)
+private val PixelBlue = Color(0xFF69B7FF)
 private val Muted = Color(0xFF9C9C9C)
 
 @Composable
@@ -82,17 +86,23 @@ fun TrafficTheme(content: @Composable () -> Unit) {
 
 @Composable
 fun TrafficScreen(uiState: TrafficUiState) {
+    val summary = uiState.summary()
+    val sortedProjects = uiState.snapshot.projects.sortedWith(projectComparator)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(PanelDark)
-            .padding(20.dp),
+            .padding(18.dp),
     ) {
         Header(uiState.connectionStatus)
-        Spacer(Modifier.height(18.dp))
-        OverallTrafficLight(uiState.snapshot.overall)
-        Spacer(Modifier.height(20.dp))
-        ProjectList(uiState)
+        Spacer(Modifier.height(14.dp))
+        BotStatusPanel(summary)
+        Spacer(Modifier.height(16.dp))
+        ProjectList(
+            projects = sortedProjects,
+            omittedCount = uiState.snapshot.omittedCount,
+        )
     }
 }
 
@@ -104,16 +114,19 @@ private fun Header(connectionStatus: ConnectionStatus) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "CODEX 红绿灯",
+            text = "CODEX 桌宠",
             color = Ink,
             fontWeight = FontWeight.Bold,
             fontSize = 22.sp,
             letterSpacing = 0.sp,
         )
         Text(
-            modifier = Modifier.testTag("connection_status"),
+            modifier = Modifier
+                .border(2.dp, connectionStatus.accent())
+                .padding(horizontal = 8.dp, vertical = 5.dp)
+                .testTag("connection_status"),
             text = connectionStatus.label(),
-            color = if (connectionStatus == ConnectionStatus.Connected) PixelGreen else Muted,
+            color = connectionStatus.accent(),
             fontSize = 12.sp,
             letterSpacing = 0.sp,
         )
@@ -121,98 +134,223 @@ private fun Header(connectionStatus: ConnectionStatus) {
 }
 
 @Composable
-private fun OverallTrafficLight(overall: TrafficLight) {
+private fun BotStatusPanel(summary: BotSummary) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .border(4.dp, GridLine)
+            .border(3.dp, GridLine)
             .background(Panel)
-            .padding(16.dp)
-            .testTag("overall_light"),
+            .padding(14.dp)
+            .testTag("bot_panel"),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        PixelLamp(
-            light = TrafficLight.Red,
-            active = overall == TrafficLight.Red,
-            squareSize = 72,
+        PixelBot(
+            mood = summary.mood,
+            modifier = Modifier
+                .fillMaxWidth(0.72f)
+                .widthIn(max = 220.dp)
+                .aspectRatio(1f)
+                .testTag("pixel_bot"),
         )
-        Spacer(Modifier.height(10.dp))
-        PixelLamp(
-            light = TrafficLight.Yellow,
-            active = overall == TrafficLight.Yellow,
-            squareSize = 72,
+        Spacer(Modifier.height(12.dp))
+        StatusBubble(
+            summary = summary,
+            modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(10.dp))
-        PixelLamp(
-            light = TrafficLight.Green,
-            active = overall == TrafficLight.Green,
-            squareSize = 72,
-        )
-        Spacer(Modifier.height(14.dp))
+    }
+}
+
+@Composable
+private fun PixelBot(
+    mood: BotMood,
+    modifier: Modifier = Modifier,
+) {
+    val eye = mood.eyeColor
+    val mouth = mood.mouthPattern
+    val accent = mood.accent
+
+    Box(
+        modifier = modifier
+            .background(Color(0xFF0D0D0D))
+            .border(4.dp, GridLine)
+            .padding(10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                PixelBlock(accent, 10)
+                Spacer(Modifier.width(22.dp))
+                PixelBlock(accent, 10)
+            }
+            Spacer(Modifier.height(4.dp))
+            Box {
+                Column(
+                    modifier = Modifier
+                        .width(106.dp)
+                        .background(BotShell, RectangleShape)
+                        .border(4.dp, BotShadow)
+                        .padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        PixelBlock(eye, 18)
+                        PixelBlock(eye, 18)
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    PixelMouth(mouth, accent)
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        PixelBlock(accent.copy(alpha = 0.65f), 8)
+                        PixelBlock(accent.copy(alpha = 0.45f), 8)
+                        PixelBlock(accent.copy(alpha = 0.30f), 8)
+                    }
+                }
+                PixelBlock(accent, 12, Modifier.align(Alignment.TopStart))
+                PixelBlock(accent, 12, Modifier.align(Alignment.TopEnd))
+            }
+            Row(
+                modifier = Modifier.width(132.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                PixelBlock(BotShell, 16)
+                PixelBlock(BotShell, 16)
+            }
+            Column(
+                modifier = Modifier
+                    .width(92.dp)
+                    .background(BotShell)
+                    .border(4.dp, BotShadow)
+                    .padding(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(32.dp)
+                        .background(BotScreen)
+                        .border(2.dp, accent),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = mood.bellyText,
+                        color = accent,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        letterSpacing = 0.sp,
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.width(76.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                PixelBlock(BotShadow, 18)
+                PixelBlock(BotShadow, 18)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PixelMouth(pattern: MouthPattern, color: Color) {
+    val rows = when (pattern) {
+        MouthPattern.Smile -> listOf("10001", "01110")
+        MouthPattern.Flat -> listOf("00000", "11111")
+        MouthPattern.Alert -> listOf("00100", "00100", "00100")
+        MouthPattern.Sleep -> listOf("01010", "10101")
+    }
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        rows.forEach { row ->
+            Row {
+                row.forEach { cell ->
+                    PixelBlock(
+                        color = if (cell == '1') color else Color.Transparent,
+                        size = 6,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PixelBlock(
+    color: Color,
+    size: Int,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .size(size.dp)
+            .background(color, RectangleShape),
+    )
+}
+
+@Composable
+private fun StatusBubble(
+    summary: BotSummary,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .border(3.dp, summary.mood.accent)
+            .background(PanelDark)
+            .padding(12.dp),
+    ) {
         Text(
-            modifier = Modifier.testTag("overall_label"),
-            text = overall.label(),
-            color = overall.color(),
+            modifier = Modifier.testTag("bot_summary"),
+            text = summary.title,
+            color = summary.mood.accent,
             fontWeight = FontWeight.Bold,
             fontSize = 18.sp,
+            letterSpacing = 0.sp,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = summary.detail,
+            color = Ink,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+            letterSpacing = 0.sp,
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = summary.action,
+            color = Muted,
+            fontSize = 12.sp,
+            lineHeight = 17.sp,
             letterSpacing = 0.sp,
         )
     }
 }
 
 @Composable
-private fun PixelLamp(
-    light: TrafficLight,
-    active: Boolean,
-    squareSize: Int,
+private fun ProjectList(
+    projects: List<ProjectTraffic>,
+    omittedCount: Int,
 ) {
-    val base = if (active) light.color() else Color(0xFF2B2B2B)
-    Box(
-        modifier = Modifier
-            .size(squareSize.dp)
-            .clipToBounds()
-            .background(Color(0xFF0B0B0B))
-            .border(4.dp, Color(0xFF464646)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            modifier = Modifier
-                .size((squareSize - 22).dp)
-                .background(base.copy(alpha = if (active) 1f else 0.55f), RectangleShape),
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(14.dp)
-                .size(18.dp)
-                .background(Color.White.copy(alpha = if (active) 0.22f else 0.04f), RectangleShape),
-        )
-    }
-}
-
-@Composable
-private fun ProjectList(uiState: TrafficUiState) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .border(3.dp, GridLine)
             .background(Panel)
-            .padding(12.dp),
+            .padding(12.dp)
+            .testTag("project_list"),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text("项目", color = Ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            if (uiState.snapshot.omittedCount > 0) {
-                Text("+${uiState.snapshot.omittedCount}", color = Muted, fontSize = 13.sp)
+            Text("项目看板", color = Ink, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            if (omittedCount > 0) {
+                Text("另有 $omittedCount 项", color = Muted, fontSize = 13.sp)
             }
         }
         Spacer(Modifier.height(8.dp))
-        if (uiState.snapshot.projects.isEmpty()) {
+        if (projects.isEmpty()) {
             Text(
                 modifier = Modifier.testTag("empty_projects"),
-                text = "暂无项目信号",
+                text = "桌宠还没收到项目信号",
                 color = Muted,
                 fontSize = 14.sp,
             )
@@ -220,7 +358,7 @@ private fun ProjectList(uiState: TrafficUiState) {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(uiState.snapshot.projects, key = { it.id }) { project ->
+                items(projects, key = { it.id }) { project ->
                     ProjectRow(project)
                 }
             }
@@ -230,6 +368,7 @@ private fun ProjectList(uiState: TrafficUiState) {
 
 @Composable
 private fun ProjectRow(project: ProjectTraffic) {
+    val status = project.statusLabel()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -241,8 +380,8 @@ private fun ProjectRow(project: ProjectTraffic) {
     ) {
         Box(
             modifier = Modifier
-                .size(18.dp)
-                .background(project.light.color())
+                .size(20.dp)
+                .background(status.color)
                 .border(2.dp, Color(0xFF050505)),
         )
         Spacer(Modifier.width(10.dp))
@@ -257,38 +396,104 @@ private fun ProjectRow(project: ProjectTraffic) {
                 letterSpacing = 0.sp,
             )
             Text(
-                text = "${project.ageSeconds} 秒 / ${project.reason.label()}",
+                text = "${project.ageSeconds} 秒 · ${project.reason.label()}",
                 color = Muted,
                 fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 letterSpacing = 0.sp,
             )
         }
         Text(
-            text = project.light.shortLabel(),
-            color = project.light.color(),
+            text = status.text,
+            color = status.color,
             fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
+            fontSize = 13.sp,
             letterSpacing = 0.sp,
         )
     }
 }
 
-private fun TrafficLight.color(): Color = when (this) {
-    TrafficLight.Green -> PixelGreen
-    TrafficLight.Yellow -> PixelYellow
-    TrafficLight.Red -> PixelRed
+private val projectComparator = compareBy<ProjectTraffic>(
+    { it.priority() },
+    { it.ageSeconds },
+    { it.name.lowercase() },
+)
+
+private fun TrafficUiState.summary(): BotSummary {
+    if (connectionStatus != ConnectionStatus.Connected) {
+        return BotSummary(
+            mood = BotMood.Offline,
+            title = connectionStatus.label(),
+            detail = "我暂时听不到 Mac companion 的信号。",
+            action = connectionStatus.actionText(),
+        )
+    }
+
+    val projects = snapshot.projects
+    if (projects.isEmpty()) {
+        return BotSummary(
+            mood = BotMood.Sleepy,
+            title = "待机中",
+            detail = "桌宠还没收到项目信号。",
+            action = "先保持 companion 运行，等 Codex 有动作后我会盯着。",
+        )
+    }
+
+    val attention = projects.count { it.needsAttention() }
+    val working = projects.count { it.reason == ReasonCode.Work }
+    val recent = projects.count { it.reason == ReasonCode.Recent }
+
+    return when {
+        attention > 0 -> BotSummary(
+            mood = BotMood.Alert,
+            title = "$attention 个项目需要看一眼",
+            detail = "可能是卡住、阻塞，或 Codex 已经不在运行。",
+            action = "优先看列表最上面的项目。",
+        )
+
+        working > 0 -> BotSummary(
+            mood = BotMood.Happy,
+            title = "$working 个项目正在推进",
+            detail = "我会每 2 秒刷新一次状态，先让它干活。",
+            action = "不用一直盯着，有异常我会把项目顶到前面。",
+        )
+
+        recent > 0 -> BotSummary(
+            mood = BotMood.Watch,
+            title = "最近有动静",
+            detail = "项目刚活跃过，但当前没有明确推进信号。",
+            action = "可以先放着观察一会儿。",
+        )
+
+        else -> BotSummary(
+            mood = BotMood.Sleepy,
+            title = "现在比较安静",
+            detail = "没有项目显示正在推进。",
+            action = "如果你预期它在跑，可以回到 Codex 看是否等待输入。",
+        )
+    }
 }
 
-private fun TrafficLight.label(): String = when (this) {
-    TrafficLight.Green -> "工作中"
-    TrafficLight.Yellow -> "近期活跃"
-    TrafficLight.Red -> "空闲"
+private fun ProjectTraffic.needsAttention(): Boolean = reason == ReasonCode.Stale ||
+    reason == ReasonCode.Blocked ||
+    reason == ReasonCode.CodexOff
+
+private fun ProjectTraffic.priority(): Int = when {
+    needsAttention() -> 0
+    reason == ReasonCode.Work -> 1
+    reason == ReasonCode.Recent -> 2
+    reason == ReasonCode.Idle -> 3
+    else -> 4
 }
 
-private fun TrafficLight.shortLabel(): String = when (this) {
-    TrafficLight.Green -> "绿"
-    TrafficLight.Yellow -> "黄"
-    TrafficLight.Red -> "红"
+private fun ProjectTraffic.statusLabel(): ProjectStatusLabel = when (reason) {
+    ReasonCode.Work -> ProjectStatusLabel("推进中", PixelGreen)
+    ReasonCode.Recent -> ProjectStatusLabel("观察", PixelYellow)
+    ReasonCode.Idle -> ProjectStatusLabel("空闲", Muted)
+    ReasonCode.Stale -> ProjectStatusLabel("卡住?", PixelRed)
+    ReasonCode.Blocked -> ProjectStatusLabel("阻塞", PixelRed)
+    ReasonCode.CodexOff -> ProjectStatusLabel("离线", PixelRed)
 }
 
 private fun ReasonCode.label(): String = when (this) {
@@ -308,4 +513,56 @@ private fun ConnectionStatus.label(): String = when (this) {
     ConnectionStatus.PermissionMissing -> "缺少权限"
     ConnectionStatus.BluetoothOff -> "蓝牙关闭"
     ConnectionStatus.Error -> "连接异常"
+}
+
+private fun ConnectionStatus.actionText(): String = when (this) {
+    ConnectionStatus.PermissionMissing -> "先授予附近设备/蓝牙权限。"
+    ConnectionStatus.BluetoothOff -> "先打开手机蓝牙。"
+    ConnectionStatus.Scanning -> "我正在找 Mac 上的 Codex Traffic。"
+    ConnectionStatus.Connecting -> "已经找到设备，正在连接。"
+    ConnectionStatus.Error -> "连接失败，稍后会自动重试。"
+    ConnectionStatus.Disconnected -> "确认 Mac companion 正在运行。"
+    ConnectionStatus.Connected -> "连接正常。"
+}
+
+private fun ConnectionStatus.accent(): Color = when (this) {
+    ConnectionStatus.Connected -> PixelGreen
+    ConnectionStatus.Connecting,
+    ConnectionStatus.Scanning -> PixelYellow
+    ConnectionStatus.PermissionMissing,
+    ConnectionStatus.BluetoothOff,
+    ConnectionStatus.Error -> PixelRed
+    ConnectionStatus.Disconnected -> Muted
+}
+
+private data class ProjectStatusLabel(
+    val text: String,
+    val color: Color,
+)
+
+private data class BotSummary(
+    val mood: BotMood,
+    val title: String,
+    val detail: String,
+    val action: String,
+)
+
+private enum class MouthPattern {
+    Smile,
+    Flat,
+    Alert,
+    Sleep,
+}
+
+private enum class BotMood(
+    val accent: Color,
+    val eyeColor: Color,
+    val bellyText: String,
+    val mouthPattern: MouthPattern,
+) {
+    Happy(PixelGreen, PixelGreen, "跑", MouthPattern.Smile),
+    Watch(PixelYellow, PixelYellow, "看", MouthPattern.Flat),
+    Alert(PixelRed, PixelRed, "!!!", MouthPattern.Alert),
+    Sleepy(Muted, Color(0xFF6C6C6C), "歇", MouthPattern.Sleep),
+    Offline(PixelBlue, Color(0xFF5E7380), "等", MouthPattern.Flat),
 }

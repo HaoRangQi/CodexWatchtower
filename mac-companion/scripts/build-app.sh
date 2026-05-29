@@ -48,9 +48,9 @@ cat > "${INFO_PLIST}" <<'PLIST'
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>Codex Traffic uses Bluetooth to broadcast local Codex activity to the Android traffic light app.</string>
+    <string>Codex Traffic uses Bluetooth to broadcast local Codex activity to the Android desktop pet app.</string>
     <key>NSBluetoothPeripheralUsageDescription</key>
-    <string>Codex Traffic uses Bluetooth to broadcast local Codex activity to the Android traffic light app.</string>
+    <string>Codex Traffic uses Bluetooth to broadcast local Codex activity to the Android desktop pet app.</string>
 </dict>
 </plist>
 PLIST
