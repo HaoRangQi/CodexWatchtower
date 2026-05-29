@@ -5,8 +5,14 @@ import android.graphics.BitmapFactory
 import android.graphics.Paint
 import android.graphics.Rect as AndroidRect
 import android.graphics.RectF
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,9 +36,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -82,7 +91,11 @@ fun CodexTrafficApp(viewModel: TrafficViewModel) {
             modifier = Modifier.fillMaxSize(),
             color = PanelDark,
         ) {
-            TrafficScreen(uiState = uiState)
+            TrafficScreen(
+                uiState = uiState,
+                onHideProject = viewModel::hideProject,
+                onRestoreProject = viewModel::restoreProject,
+            )
         }
     }
 }
@@ -107,9 +120,15 @@ fun TrafficTheme(content: @Composable () -> Unit) {
 }
 
 @Composable
-fun TrafficScreen(uiState: TrafficUiState) {
+fun TrafficScreen(
+    uiState: TrafficUiState,
+    petMotionEnabled: Boolean = true,
+    onHideProject: (ProjectTraffic) -> Unit = {},
+    onRestoreProject: (ProjectTraffic) -> Unit = {},
+) {
     val summary = uiState.summary()
     val sortedProjects = uiState.snapshot.projects.sortedWith(projectComparator)
+    val hiddenProjects = uiState.hiddenProjects.sortedWith(projectComparator)
 
     Column(
         modifier = Modifier
@@ -120,11 +139,17 @@ fun TrafficScreen(uiState: TrafficUiState) {
     ) {
         ConnectionPill(uiState.connectionStatus)
         Spacer(Modifier.height(4.dp))
-        BotStatusPanel(summary)
+        BotStatusPanel(
+            summary = summary,
+            petMotionEnabled = petMotionEnabled,
+        )
         Spacer(Modifier.height(8.dp))
         ProjectList(
             projects = sortedProjects,
             omittedCount = uiState.snapshot.omittedCount,
+            hiddenProjects = hiddenProjects,
+            onHideProject = onHideProject,
+            onRestoreProject = onRestoreProject,
         )
     }
 }
@@ -155,7 +180,10 @@ private fun ConnectionPill(connectionStatus: ConnectionStatus) {
 }
 
 @Composable
-private fun BotStatusPanel(summary: BotSummary) {
+private fun BotStatusPanel(
+    summary: BotSummary,
+    petMotionEnabled: Boolean,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -165,9 +193,10 @@ private fun BotStatusPanel(summary: BotSummary) {
     ) {
         PetBot(
             mood = summary.mood,
+            motionEnabled = petMotionEnabled,
             modifier = Modifier
-                .fillMaxWidth(0.98f)
-                .widthIn(max = 430.dp)
+                .fillMaxWidth(0.88f)
+                .widthIn(max = 360.dp)
                 .aspectRatio(1f)
                 .testTag("pet_bot"),
         )
@@ -182,9 +211,11 @@ private fun BotStatusPanel(summary: BotSummary) {
 @Composable
 private fun PetBot(
     mood: BotMood,
+    motionEnabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val motion = if (motionEnabled) rememberPetMotion(mood) else PetMotion.Still
     val bsodSpritesheet = remember(context) {
         runCatching {
             context.assets.open(CodexBsodAssetFile).use(BitmapFactory::decodeStream)
@@ -194,6 +225,13 @@ private fun PetBot(
     Canvas(
         modifier = modifier
             .background(Color.Black)
+            .graphicsLayer {
+                translationX = motion.swayPx
+                translationY = motion.bobPx
+                rotationZ = motion.rotationDegrees
+                scaleX = motion.scale
+                scaleY = motion.scale
+            }
             .semantics { contentDescription = "蓝屏白壳桌宠" },
     ) {
         if (bsodSpritesheet != null) {
@@ -202,6 +240,44 @@ private fun PetBot(
             drawPet(mood)
         }
     }
+}
+
+@Composable
+private fun rememberPetMotion(mood: BotMood): PetMotion {
+    val transition = rememberInfiniteTransition(label = "pet_motion")
+    val bob by transition.animateFloat(
+        initialValue = -1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = mood.motionMillis),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "pet_bob",
+    )
+    val sway by transition.animateFloat(
+        initialValue = -1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = mood.motionMillis + 450),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "pet_sway",
+    )
+    val blink by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2600),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "pet_breath",
+    )
+    return PetMotion(
+        bobPx = bob * mood.bobPx,
+        swayPx = sway * mood.swayPx,
+        rotationDegrees = sway * mood.rotationDegrees,
+        scale = 1f + blink * mood.scalePulse,
+    )
 }
 
 private fun DrawScope.drawBsodPet(spritesheet: Bitmap, mood: BotMood) {
@@ -213,10 +289,10 @@ private fun DrawScope.drawBsodPet(spritesheet: Bitmap, mood: BotMood) {
         (frame.column + 1) * BsodFrameWidth,
         (frame.row + 1) * BsodFrameHeight,
     )
-    val targetWidth = side * 0.95f
+    val targetWidth = side * 0.84f
     val targetHeight = targetWidth * BsodFrameHeight / BsodFrameWidth
     val left = (size.width - targetWidth) / 2f
-    val top = (size.height - targetHeight) / 2f - side * 0.05f
+    val top = (size.height - targetHeight) / 2f - side * 0.02f
     val target = RectF(left, top, left + targetWidth, top + targetHeight)
 
     drawRoundRect(
@@ -337,7 +413,11 @@ private fun StatusBubble(
 private fun ProjectList(
     projects: List<ProjectTraffic>,
     omittedCount: Int,
+    hiddenProjects: List<ProjectTraffic>,
+    onHideProject: (ProjectTraffic) -> Unit,
+    onRestoreProject: (ProjectTraffic) -> Unit,
 ) {
+    var showHiddenProjects by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -358,7 +438,11 @@ private fun ProjectList(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 items(projects, key = { it.id }) { project ->
-                    ProjectRow(project)
+                    ProjectRow(
+                        project = project,
+                        actionText = "隐藏",
+                        onAction = { onHideProject(project) },
+                    )
                 }
                 if (omittedCount > 0) {
                     item {
@@ -370,13 +454,55 @@ private fun ProjectList(
                         )
                     }
                 }
+                if (hiddenProjects.isNotEmpty()) {
+                    item {
+                        HiddenProjectsToggle(
+                            count = hiddenProjects.size,
+                            expanded = showHiddenProjects,
+                            onClick = { showHiddenProjects = !showHiddenProjects },
+                        )
+                    }
+                    if (showHiddenProjects) {
+                        items(hiddenProjects, key = { "hidden_${it.id}" }) { project ->
+                            ProjectRow(
+                                project = project,
+                                actionText = "恢复",
+                                onAction = { onRestoreProject(project) },
+                                muted = true,
+                            )
+                        }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ProjectRow(project: ProjectTraffic) {
+private fun HiddenProjectsToggle(
+    count: Int,
+    expanded: Boolean,
+    onClick: () -> Unit,
+) {
+    Text(
+        modifier = Modifier
+            .padding(horizontal = 2.dp, vertical = 7.dp)
+            .clickable(onClick = onClick)
+            .testTag("hidden_projects_toggle"),
+        text = if (expanded) "已隐藏 $count 项 · 收起" else "已隐藏 $count 项 · 点此恢复",
+        color = Dim,
+        fontSize = 11.sp,
+        letterSpacing = 0.sp,
+    )
+}
+
+@Composable
+private fun ProjectRow(
+    project: ProjectTraffic,
+    actionText: String,
+    onAction: () -> Unit,
+    muted: Boolean = false,
+) {
     val status = project.statusLabel()
     Row(
         modifier = Modifier
@@ -389,13 +515,13 @@ private fun ProjectRow(project: ProjectTraffic) {
         Box(
             modifier = Modifier
                 .size(9.dp)
-                .background(status.color, CircleShape),
+                .background(status.color.copy(alpha = if (muted) 0.48f else 1f), CircleShape),
         )
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = project.name,
-                color = Ink,
+                color = if (muted) Muted else Ink,
                 fontWeight = FontWeight.Medium,
                 fontSize = 13.sp,
                 maxLines = 1,
@@ -412,9 +538,20 @@ private fun ProjectRow(project: ProjectTraffic) {
         Spacer(Modifier.width(8.dp))
         Text(
             text = status.text,
-            color = status.color,
+            color = status.color.copy(alpha = if (muted) 0.55f else 1f),
             fontWeight = FontWeight.Medium,
             fontSize = 12.sp,
+            letterSpacing = 0.sp,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            modifier = Modifier
+                .clickable(onClick = onAction)
+                .padding(horizontal = 2.dp, vertical = 3.dp)
+                .testTag("${actionText}_${project.id}"),
+            text = actionText,
+            color = if (muted) StatusGreen else Dim,
+            fontSize = 11.sp,
             letterSpacing = 0.sp,
         )
     }
@@ -463,8 +600,8 @@ private fun TrafficUiState.summary(): BotSummary {
 
         recent > 0 -> BotSummary(
             mood = BotMood.Watch,
-            title = "最近有动静",
-            detail = "观察中",
+            title = "刚有动静",
+            detail = "当前没新进展",
         )
 
         else -> BotSummary(
@@ -489,7 +626,7 @@ private fun ProjectTraffic.priority(): Int = when {
 
 private fun ProjectTraffic.statusLabel(): ProjectStatusLabel = when (reason) {
     ReasonCode.Work -> ProjectStatusLabel("推进中", StatusGreen)
-    ReasonCode.Recent -> ProjectStatusLabel("观察", StatusYellow)
+    ReasonCode.Recent -> ProjectStatusLabel("刚动过", StatusYellow)
     ReasonCode.Idle -> ProjectStatusLabel("空闲", Muted)
     ReasonCode.Stale -> ProjectStatusLabel("卡住?", StatusRed)
     ReasonCode.Blocked -> ProjectStatusLabel("阻塞", StatusRed)
@@ -537,6 +674,22 @@ private data class BotSummary(
     val detail: String,
 )
 
+private data class PetMotion(
+    val bobPx: Float,
+    val swayPx: Float,
+    val rotationDegrees: Float,
+    val scale: Float,
+) {
+    companion object {
+        val Still = PetMotion(
+            bobPx = 0f,
+            swayPx = 0f,
+            rotationDegrees = 0f,
+            scale = 1f,
+        )
+    }
+}
+
 private enum class EyePattern {
     Bright,
     Watch,
@@ -551,12 +704,17 @@ private enum class BotMood(
     val bellyText: String,
     val eyePattern: EyePattern,
     val bsodFrame: SpriteFrame,
+    val motionMillis: Int,
+    val bobPx: Float,
+    val swayPx: Float,
+    val rotationDegrees: Float,
+    val scalePulse: Float,
 ) {
-    Happy(StatusGreen, StatusGreen, "忙", EyePattern.Bright, SpriteFrame(row = 3, column = 2)),
-    Watch(StatusYellow, StatusYellow, "看", EyePattern.Watch, SpriteFrame(row = 0, column = 0)),
-    Alert(StatusRed, StatusRed, "!!!", EyePattern.Alert, SpriteFrame(row = 5, column = 4)),
-    Sleepy(Muted, Color(0xFF5C5C5C), "歇", EyePattern.Sleep, SpriteFrame(row = 0, column = 1)),
-    Offline(StatusBlue, Color(0xFF4E6470), "等", EyePattern.Offline, SpriteFrame(row = 5, column = 1)),
+    Happy(StatusGreen, StatusGreen, "忙", EyePattern.Bright, SpriteFrame(row = 3, column = 2), 1250, 5f, 2.4f, 1.3f, 0.010f),
+    Watch(StatusYellow, StatusYellow, "看", EyePattern.Watch, SpriteFrame(row = 0, column = 0), 1650, 3.8f, 1.8f, 0.9f, 0.007f),
+    Alert(StatusRed, StatusRed, "!!!", EyePattern.Alert, SpriteFrame(row = 5, column = 4), 900, 6f, 3f, 1.8f, 0.012f),
+    Sleepy(Muted, Color(0xFF5C5C5C), "歇", EyePattern.Sleep, SpriteFrame(row = 0, column = 1), 2200, 2.5f, 0.8f, 0.4f, 0.004f),
+    Offline(StatusBlue, Color(0xFF4E6470), "等", EyePattern.Offline, SpriteFrame(row = 5, column = 1), 1900, 3f, 1.2f, 0.6f, 0.005f),
 }
 
 private data class SpriteFrame(

@@ -67,6 +67,6 @@ enum class ConnectionStatus {
 data class TrafficUiState(
     val connectionStatus: ConnectionStatus = ConnectionStatus.Disconnected,
     val snapshot: TrafficSnapshot = TrafficSnapshot.empty,
+    val hiddenProjects: List<ProjectTraffic> = emptyList(),
     val errorMessage: String? = null,
 )
-

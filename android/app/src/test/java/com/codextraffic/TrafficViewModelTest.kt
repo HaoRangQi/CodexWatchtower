@@ -71,6 +71,64 @@ class TrafficViewModelTest {
         assertEquals(1, repository.stopCalls)
     }
 
+    @Test
+    fun hiddenProjectsAreFilteredAndRemembered() = runTest {
+        val repository = FakeTrafficRepository()
+        val hiddenStore = FakeHiddenProjectStore()
+        val viewModel = TrafficViewModel(repository, hiddenStore)
+        val active = ProjectTraffic("active", "loading", TrafficLight.Green, 2, ReasonCode.Work)
+        val hidden = ProjectTraffic("hidden", "old-job", TrafficLight.Green, 3, ReasonCode.Work)
+        advanceUntilIdle()
+
+        repository.snapshotsFlow.emit(
+            TrafficSnapshot(
+                version = 1,
+                timestampSeconds = 10,
+                overall = TrafficLight.Green,
+                projects = listOf(active, hidden),
+                omittedCount = 0,
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.hideProject(hidden)
+        advanceUntilIdle()
+
+        assertEquals(listOf(active), viewModel.uiState.value.snapshot.projects)
+        assertEquals(listOf(hidden), viewModel.uiState.value.hiddenProjects)
+        assertEquals(setOf("hidden"), hiddenStore.savedIds)
+    }
+
+    @Test
+    fun restoringHiddenProjectMakesItVisibleAgain() = runTest {
+        val repository = FakeTrafficRepository()
+        val hiddenStore = FakeHiddenProjectStore(initialIds = setOf("hidden"))
+        val viewModel = TrafficViewModel(repository, hiddenStore)
+        val hidden = ProjectTraffic("hidden", "old-job", TrafficLight.Yellow, 3, ReasonCode.Recent)
+        advanceUntilIdle()
+
+        repository.snapshotsFlow.emit(
+            TrafficSnapshot(
+                version = 1,
+                timestampSeconds = 10,
+                overall = TrafficLight.Yellow,
+                projects = listOf(hidden),
+                omittedCount = 0,
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals(emptyList<ProjectTraffic>(), viewModel.uiState.value.snapshot.projects)
+        assertEquals(listOf(hidden), viewModel.uiState.value.hiddenProjects)
+
+        viewModel.restoreProject(hidden)
+        advanceUntilIdle()
+
+        assertEquals(listOf(hidden), viewModel.uiState.value.snapshot.projects)
+        assertEquals(emptyList<ProjectTraffic>(), viewModel.uiState.value.hiddenProjects)
+        assertEquals(emptySet<String>(), hiddenStore.savedIds)
+    }
+
     private class FakeTrafficRepository : TrafficRepository {
         val connection = MutableStateFlow(ConnectionStatus.Disconnected)
         val snapshotsFlow = MutableSharedFlow<TrafficSnapshot>()
@@ -91,5 +149,17 @@ class TrafficViewModelTest {
         override fun requiredPermissions(): Array<String> = emptyArray()
 
         override fun hasRequiredPermissions(): Boolean = true
+    }
+
+    private class FakeHiddenProjectStore(
+        initialIds: Set<String> = emptySet(),
+    ) : HiddenProjectStore {
+        var savedIds = initialIds
+
+        override suspend fun hiddenProjectIds(): Set<String> = savedIds
+
+        override suspend fun saveHiddenProjectIds(ids: Set<String>) {
+            savedIds = ids
+        }
     }
 }

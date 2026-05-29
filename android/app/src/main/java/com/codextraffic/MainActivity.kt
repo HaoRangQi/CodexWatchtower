@@ -14,7 +14,8 @@ import com.codextraffic.ui.CodexTrafficApp
 class MainActivity : ComponentActivity() {
     private val viewModel: TrafficViewModel by viewModels {
         TrafficViewModelFactory(
-            BleTrafficRepository(BleTrafficClient(applicationContext))
+            repository = BleTrafficRepository(BleTrafficClient(applicationContext)),
+            hiddenProjectStore = SharedPreferencesHiddenProjectStore(applicationContext),
         )
     }
 

@@ -38,9 +38,9 @@ Android 连接后请求 MTU 517；失败时继续使用普通 read。为兼容�
 - `y`：最近有活动但当前不确定或等待。
 - `r`：空闲、Codex 未运行、blocked，或疑似卡住。
 
-Android UI 不再以红绿灯为主视觉，而是把状态映射到 BSOD 蓝屏桌宠 mood、极简状态短句和项目行标签。Android 优先从本机 `assets/codex_bsod_spritesheet.webp` 读取 Codex app 的 BSOD spritesheet；该专有资源由 `scripts/sync-codex-bsod-asset.sh` 从 `/Applications/Codex.app/Contents/Resources/app.asar` 提取，不提交进仓库。资源缺失时，UI 回退到内置蓝屏白壳绘制版本。项目行仍保留颜色辅助，但核心提示是“推进中 / 观察 / 需要看一眼 / 阻塞 / 离线”等中文语义。
+Android UI 不再以红绿灯为主视觉，而是把状态映射到 BSOD 蓝屏桌宠 mood、极简状态短句和项目行标签。Android 优先从本机 `assets/codex_bsod_spritesheet.webp` 读取 Codex app 的 BSOD spritesheet；该专有资源由 `scripts/sync-codex-bsod-asset.sh` 从 `/Applications/Codex.app/Contents/Resources/app.asar` 提取，不提交进仓库。资源缺失时，UI 回退到内置蓝屏白壳绘制版本。项目行仍保留颜色辅助，但核心提示是“推进中 / 刚动过 / 需要看一眼 / 阻塞 / 离线”等中文语义。
 
-屏幕长期摆放时优先省电：Android 背景、面板和项目行使用纯黑，主界面减少标题、方框和长说明，只保留连接角标、桌宠、整体状态短句和项目状态行。
+屏幕长期摆放时优先省电：Android 背景、面板和项目行使用纯黑，主界面减少标题、方框和长说明，只保留连接角标、桌宠、整体状态短句和项目状态行。桌宠使用低幅度呼吸、上下浮动和轻微摆动，避免常亮时像静止图片。
 
 ## Android 行为
 
@@ -49,8 +49,10 @@ Android UI 用户可见文案使用中文。连接状态单独显示，不混入
 主界面由三层组成：
 
 1. 右上角 BLE 连接状态点和短标签。
-2. OLED 纯黑背景上的大尺寸 BSOD 蓝屏桌宠，表达整体项目情况。
+2. OLED 纯黑背景上的中等尺寸 BSOD 蓝屏桌宠，表达整体项目情况。
 3. 极简项目列表，按需要关注优先排序，再按最近活动时间排序。
+
+Android 端持有本机隐藏项目列表，存储在 `SharedPreferences`。用户在手机上点项目行的 `隐藏` 后，该项目 ID 会被加入本机隐藏集合；后续 snapshot 中同 ID 项目不会显示，也不会参与 Android 端重新计算后的桌宠总状态。底部 `已隐藏 N 项 · 点此恢复` 展开隐藏列表，用户可点 `恢复` 移除本机隐藏记录。该能力不写回 Mac，不改变 BLE payload，也不影响其他手机。
 
 扫描策略：
 

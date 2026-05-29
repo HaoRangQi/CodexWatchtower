@@ -2,13 +2,14 @@ package com.codextraffic.ui
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.codextraffic.model.ConnectionStatus
 import com.codextraffic.model.ProjectTraffic
@@ -30,18 +31,20 @@ class TrafficScreenTest {
         composeRule.setContent {
             TrafficTheme {
                 TrafficScreen(
-                    TrafficUiState(
+                    uiState = TrafficUiState(
                         connectionStatus = ConnectionStatus.Connected,
                         snapshot = TrafficSnapshot(
                             version = 1,
                             timestampSeconds = 10,
                             overall = TrafficLight.Green,
                             projects = listOf(
-                                ProjectTraffic("a1b2c3d4", "loading", TrafficLight.Green, 4, ReasonCode.Work)
+                                ProjectTraffic("a1b2c3d4", "loading", TrafficLight.Green, 4, ReasonCode.Work),
+                                ProjectTraffic("b2c3d4e5", "shimmyUI", TrafficLight.Yellow, 23, ReasonCode.Recent),
                             ),
                             omittedCount = 0,
                         ),
-                    )
+                    ),
+                    petMotionEnabled = false,
                 )
             }
         }
@@ -56,6 +59,37 @@ class TrafficScreenTest {
         composeRule.onNodeWithText("loading").assertIsDisplayed()
         composeRule.onNodeWithText("4 秒").assertIsDisplayed()
         composeRule.onNodeWithText("推进中").assertIsDisplayed()
+        composeRule.onNodeWithText("shimmyUI").assertIsDisplayed()
+        composeRule.onNodeWithText("刚动过").assertIsDisplayed()
+        composeRule.onAllNodesWithText("观察").assertCountEquals(0)
+    }
+
+    @Test
+    fun recentStateUsesConcreteText() {
+        composeRule.setContent {
+            TrafficTheme {
+                TrafficScreen(
+                    uiState = TrafficUiState(
+                        connectionStatus = ConnectionStatus.Connected,
+                        snapshot = TrafficSnapshot(
+                            version = 1,
+                            timestampSeconds = 10,
+                            overall = TrafficLight.Yellow,
+                            projects = listOf(
+                                ProjectTraffic("b2c3d4e5", "shimmyUI", TrafficLight.Yellow, 23, ReasonCode.Recent)
+                            ),
+                            omittedCount = 0,
+                        ),
+                    ),
+                    petMotionEnabled = false,
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("bot_summary").assertTextEquals("刚有动静")
+        composeRule.onNodeWithText("当前没新进展").assertIsDisplayed()
+        composeRule.onNodeWithText("刚动过").assertIsDisplayed()
+        composeRule.onAllNodesWithText("观察").assertCountEquals(0)
     }
 
     @Test
@@ -63,10 +97,11 @@ class TrafficScreenTest {
         composeRule.setContent {
             TrafficTheme {
                 TrafficScreen(
-                    TrafficUiState(
+                    uiState = TrafficUiState(
                         connectionStatus = ConnectionStatus.Disconnected,
                         snapshot = TrafficSnapshot.empty,
-                    )
+                    ),
+                    petMotionEnabled = false,
                 )
             }
         }
@@ -75,5 +110,47 @@ class TrafficScreenTest {
         composeRule.onNodeWithTag("pet_bot").assertIsDisplayed()
         composeRule.onNodeWithTag("bot_summary").assertTextEquals("未连接")
         composeRule.onNodeWithText("暂无项目").assertIsDisplayed()
+    }
+
+    @Test
+    fun canHideAndRestoreProjectsFromPhone() {
+        var hiddenProject: ProjectTraffic? = null
+        var restoredProject: ProjectTraffic? = null
+        val hidden = ProjectTraffic("hidden", "old-job", TrafficLight.Yellow, 23, ReasonCode.Recent)
+
+        composeRule.setContent {
+            TrafficTheme {
+                TrafficScreen(
+                    uiState = TrafficUiState(
+                        connectionStatus = ConnectionStatus.Connected,
+                        snapshot = TrafficSnapshot(
+                            version = 1,
+                            timestampSeconds = 10,
+                            overall = TrafficLight.Green,
+                            projects = listOf(
+                                ProjectTraffic("active", "loading", TrafficLight.Green, 4, ReasonCode.Work)
+                            ),
+                            omittedCount = 0,
+                        ),
+                        hiddenProjects = listOf(hidden),
+                    ),
+                    petMotionEnabled = false,
+                    onHideProject = { hiddenProject = it },
+                    onRestoreProject = { restoredProject = it },
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("隐藏").performClick()
+        composeRule.runOnIdle {
+            check(hiddenProject?.id == "active")
+        }
+
+        composeRule.onNodeWithText("已隐藏 1 项 · 点此恢复").performClick()
+        composeRule.onNodeWithText("old-job").assertIsDisplayed()
+        composeRule.onNodeWithText("恢复").performClick()
+        composeRule.runOnIdle {
+            check(restoredProject?.id == "hidden")
+        }
     }
 }
