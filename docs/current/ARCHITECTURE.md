@@ -19,6 +19,8 @@ Mac 端只读 Codex 本地 SQLite 状态：
 不读取会话正文、`history.jsonl` 或大日志。状态判断是启发式，不等同 Codex 私有内部运行态。
 第二屏“宠物动态”也只基于这些结构化状态字段生成，例如项目正在推进、近期更新、
 目标 blocked、任务 stale 或 Codex 进程不在线；它不是 Codex 原始聊天输出镜像。
+新 companion 会在 BLE payload 中发送 `f/n` 动态字段；Android parser 兼容旧 payload，
+没有 `f/n` 时会从 `p` 项目行派生同语义的动态卡片，避免手机端出现空白第二屏。
 
 ## BLE 契约
 
@@ -51,7 +53,8 @@ Android UI 用户可见文案使用中文。连接状态单独显示，不混入
 Android 使用横向分页：
 
 - 第一屏是常亮桌宠监控。
-- 向左滑动进入第二屏 `宠物动态`，展示 Mac companion 生成的结构化项目动态。
+- 向左滑动进入第二屏宠物动态，展示 Mac companion 生成的结构化项目动态。视觉形态贴近 Codex avatar overlay：左上浮动通知托盘、右下小桌宠、纯黑背景和轻量网格。
+- 再向左滑动进入第三屏 `信号矩阵`，展示偏极客画风的 HUD 仪表：雷达环、扫描线、信号柱、项目轨道和中文状态摘要。第三屏不使用终端 JSON 文本作为主界面。
 
 第一屏由三层组成：
 
@@ -89,3 +92,6 @@ source ../scripts/use-android-toolchain.sh
 ```
 
 真机验收使用 `ONEPLUS A6013` 无线 ADB 验证过：发现 `Codex Traffic`、GATT connected、发现 characteristic、持续收到 payload，UI 显示中文 `已连接` 和项目状态。
+如果设备进入 secure lock/AOD 状态，`NotificationShade` 会遮住测试 Activity，导致
+`connectedDebugAndroidTest` 报 `No compose hierarchies found in the app`。这种情况下需先
+手动解锁手机，再跑 Compose instrumentation；编译、单测和 BLE payload 日志不受影响。

@@ -70,4 +70,23 @@ class TrafficPayloadParserTest {
             snapshot.feedItems.single(),
         )
     }
+
+    @Test
+    fun derivesPetFeedRowsFromLegacyProjectPayload() {
+        val snapshot = parser.parse(
+            """{"v":1,"t":1780039000,"o":"g","p":[["a1b2c3d4","loading","g",4,"work"]],"m":0}"""
+        )
+
+        assertEquals(
+            PetFeedItem(
+                projectId = "a1b2c3d4",
+                title = "正在推进 loading",
+                body = "4 秒内有新动作",
+                light = TrafficLight.Green,
+                ageSeconds = 4,
+                reason = ReasonCode.Work,
+            ),
+            snapshot.feedItems.single(),
+        )
+    }
 }

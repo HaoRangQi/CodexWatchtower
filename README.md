@@ -2,7 +2,7 @@
 
 一台旧 Android 手机可以摆在旁边，当作 Codex 项目状态桌宠。macOS companion
 只读本机 Codex 状态，通过 BLE 广播 compact JSON；Android app 连接后显示高保真
-BSOD 蓝屏小机器人、极简状态短句、项目列表和宠物动态。
+BSOD 蓝屏小机器人、极简状态短句、项目列表、宠物动态和信号矩阵。
 
 核心目标不是“显示一个颜色”，而是让用户不用一直盯着 Codex：桌宠会把正在推进、
 近期有动静、需要介入或可能卡住的项目排出来。
@@ -10,8 +10,13 @@ BSOD 蓝屏小机器人、极简状态短句、项目列表和宠物动态。
 手机端可以直接隐藏不想看的项目；隐藏列表保存在 Android 本机，不会写回 Mac 或
 改变 BLE payload。被隐藏项目不再参与桌宠总状态，底部入口可随时恢复。
 向左滑动进入第二屏，可以看 companion 生成的宠物动态：它展示项目是否正在推进、
-刚有动静、疑似卡住、blocked 或 Codex 离线。当前动态只来自 SQLite 结构化状态字段，
-不读取完整会话正文、`history.jsonl` 或大日志。
+刚有动静、疑似卡住、blocked 或 Codex 离线。第二屏按 Codex avatar overlay 的形态做
+成浮动通知托盘和小桌宠，不再是普通列表。当前动态只来自 SQLite 结构化状态字段，
+不读取完整会话正文、`history.jsonl` 或大日志。若手机连到旧 companion，Android 会从
+项目行派生动态兜底，避免第二屏空白。
+
+继续向左滑动进入第三屏 `信号矩阵`。它是偏极客画风的 HUD 仪表页，用雷达环、扫描线、
+信号柱和项目轨道展示多项目状态，不是黑底终端或 JSON 文本页。
 
 视觉上优先照顾旧手机常亮场景：背景尽量使用纯黑，减少标题、方框和长说明，
 只点亮蓝色屏幕脸、胸屏、连接状态和必要的项目状态提示，降低 OLED 屏耗电和烧屏风险。
@@ -127,5 +132,6 @@ android/app/build/outputs/apk/debug/app-debug.apk
 3. Grant Bluetooth permissions。
 4. Confirm the connection label changes to `已连接`。
 5. Confirm the high-fidelity pet, compact status text, and project list update as Codex activity changes。
-6. Swipe left and confirm the second screen shows `宠物动态`。
-7. Tap `隐藏` on a project, then use `已隐藏 N 项 · 点此恢复` to restore it。
+6. Swipe left and confirm the second screen shows `最新` and real project dynamic rows。
+7. Swipe left again and confirm the third screen shows `信号矩阵` HUD。
+8. Tap `隐藏` on a project, then use `已隐藏 N 项 · 点此恢复` to restore it。

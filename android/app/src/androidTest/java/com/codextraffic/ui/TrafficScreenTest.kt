@@ -158,7 +158,7 @@ class TrafficScreenTest {
     }
 
     @Test
-    fun swipingLeftShowsPetFeedScreen() {
+    fun swipingLeftShowsCodexOverlayStylePetFeedScreen() {
         composeRule.setContent {
             TrafficTheme {
                 TrafficPagerScreen(
@@ -193,7 +193,54 @@ class TrafficScreenTest {
         composeRule.onNodeWithTag("traffic_pager").performTouchInput { swipeLeft() }
 
         composeRule.onNodeWithTag("pet_feed_screen").assertIsDisplayed()
+        composeRule.onNodeWithTag("avatar_overlay_stage").assertIsDisplayed()
+        composeRule.onNodeWithTag("avatar_notification_tray").assertIsDisplayed()
+        composeRule.onNodeWithTag("avatar_overlay_mascot").assertIsDisplayed()
+        composeRule.onNodeWithText("最新").assertIsDisplayed()
         composeRule.onNodeWithText("正在推进 loading").assertIsDisplayed()
         composeRule.onNodeWithText("4 秒内有新动作").assertIsDisplayed()
+    }
+
+    @Test
+    fun swipingLeftTwiceShowsGeekStatusScreen() {
+        composeRule.setContent {
+            TrafficTheme {
+                TrafficPagerScreen(
+                    uiState = TrafficUiState(
+                        connectionStatus = ConnectionStatus.Connected,
+                        snapshot = TrafficSnapshot(
+                            version = 1,
+                            timestampSeconds = 1780039000,
+                            overall = TrafficLight.Green,
+                            projects = listOf(
+                                ProjectTraffic("a1b2c3d4", "loading", TrafficLight.Green, 4, ReasonCode.Work)
+                            ),
+                            omittedCount = 2,
+                            feedItems = listOf(
+                                PetFeedItem(
+                                    projectId = "a1b2c3d4",
+                                    title = "正在推进 loading",
+                                    body = "4 秒内有新动作",
+                                    light = TrafficLight.Green,
+                                    ageSeconds = 4,
+                                    reason = ReasonCode.Work,
+                                )
+                            ),
+                            omittedFeedCount = 1,
+                        ),
+                    ),
+                    petMotionEnabled = false,
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("traffic_pager").performTouchInput { swipeLeft() }
+        composeRule.onNodeWithTag("traffic_pager").performTouchInput { swipeLeft() }
+
+        composeRule.onNodeWithTag("geek_status_screen").assertIsDisplayed()
+        composeRule.onNodeWithText("信号矩阵").assertIsDisplayed()
+        composeRule.onNodeWithTag("geek_hud_scope").assertIsDisplayed()
+        composeRule.onNodeWithTag("geek_signal_loading").assertIsDisplayed()
+        composeRule.onNodeWithText("loading").assertIsDisplayed()
     }
 }

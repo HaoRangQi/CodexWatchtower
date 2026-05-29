@@ -19,7 +19,10 @@ class TrafficPayloadParser {
     fun parse(payload: String): TrafficSnapshot {
         val root = json.parseToJsonElement(payload).jsonObject
         val projects = root.array("p").mapNotNull(::parseProject)
-        val feedItems = root.array("f").mapNotNull(::parseFeedItem)
+        val hasFeedField = root.containsKey("f")
+        val parsedFeedItems = root.array("f").mapNotNull(::parseFeedItem)
+        val feedItems = if (hasFeedField) parsedFeedItems else projects.map(::projectToFeedItem)
+        val omittedFeedCount = if (hasFeedField) root.int("n") else root.int("m")
 
         return TrafficSnapshot(
             version = root.int("v"),
@@ -28,7 +31,7 @@ class TrafficPayloadParser {
             projects = projects,
             omittedCount = root.int("m"),
             feedItems = feedItems,
-            omittedFeedCount = root.int("n"),
+            omittedFeedCount = omittedFeedCount,
         )
     }
 
@@ -57,6 +60,33 @@ class TrafficPayloadParser {
             ageSeconds = row[4].asLong(),
             reason = ReasonCode.fromWireValue(row[5].asString()),
         )
+    }
+
+    private fun projectToFeedItem(project: ProjectTraffic): PetFeedItem = PetFeedItem(
+        projectId = project.id,
+        title = project.feedTitle(),
+        body = project.feedBody(),
+        light = project.light,
+        ageSeconds = project.ageSeconds,
+        reason = project.reason,
+    )
+
+    private fun ProjectTraffic.feedTitle(): String = when (reason) {
+        ReasonCode.Work -> "正在推进 $name"
+        ReasonCode.Recent -> "$name 刚有动静"
+        ReasonCode.Idle -> "$name 暂时安静"
+        ReasonCode.Stale -> "$name 可能卡住"
+        ReasonCode.Blocked -> "$name 需要处理阻塞"
+        ReasonCode.CodexOff -> "$name 的 Codex 不在线"
+    }
+
+    private fun ProjectTraffic.feedBody(): String = when (reason) {
+        ReasonCode.Work -> "$ageSeconds 秒内有新动作"
+        ReasonCode.Recent -> "$ageSeconds 秒前更新，当前没确认推进"
+        ReasonCode.Idle -> "超过近期窗口没有新活动"
+        ReasonCode.Stale -> "运行任务超过预期，且没有进展信号"
+        ReasonCode.Blocked -> "目标状态是 blocked，需要回到 Codex 看原因"
+        ReasonCode.CodexOff -> "没有检测到 Codex 进程"
     }
 
     private fun JsonObject.string(name: String): String = this[name]?.asString().orEmpty()

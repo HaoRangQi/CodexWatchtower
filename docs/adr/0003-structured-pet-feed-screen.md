@@ -24,6 +24,7 @@
   - `f`：动态行 `[projectId, title, body, light, ageSeconds, reason]`
   - `n`：因 480 bytes 限制被截断的动态数量
 - Android 解析 `f/n`，第二屏按关注优先级和最近活动排序展示动态。
+- Android 兼容旧 payload：没有 `f/n` 时从 `p` 项目行派生等价动态，避免第二屏空白。
 - 手机端隐藏项目时，同步过滤第二屏动态，避免隐藏项目在动态页继续出现。
 - 仍不读取会话正文、`history.jsonl` 或大日志。
 
@@ -33,7 +34,7 @@
 
 - 第二屏已经有可用的动态内容，能表达项目推进、等待、阻塞和卡住风险。
 - 保持当前隐私边界和 BLE 简单契约，不需要新增 characteristic 或分片协议。
-- Android 端可以继续兼容旧 payload：没有 `f/n` 时第二屏显示 `暂无动态`。
+- Android 端可以继续兼容旧 payload：没有 `f/n` 时第二屏仍显示派生动态。
 
 取舍：
 

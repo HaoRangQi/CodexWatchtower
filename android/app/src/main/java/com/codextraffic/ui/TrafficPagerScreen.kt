@@ -17,7 +17,7 @@ fun TrafficPagerScreen(
     onHideProject: (ProjectTraffic) -> Unit = {},
     onRestoreProject: (ProjectTraffic) -> Unit = {},
 ) {
-    val pagerState = rememberPagerState(pageCount = { 2 })
+    val pagerState = rememberPagerState(pageCount = { 3 })
 
     HorizontalPager(
         state = pagerState,
@@ -33,7 +33,11 @@ fun TrafficPagerScreen(
                 onHideProject = onHideProject,
                 onRestoreProject = onRestoreProject,
             )
-            1 -> PetFeedScreen(uiState = uiState)
+            1 -> PetFeedScreen(
+                uiState = uiState,
+                mascotMotionEnabled = petMotionEnabled,
+            )
+            2 -> GeekStatusScreen(uiState = uiState)
         }
     }
 }
