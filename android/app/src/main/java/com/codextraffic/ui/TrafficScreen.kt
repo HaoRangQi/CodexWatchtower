@@ -1,7 +1,10 @@
 package com.codextraffic.ui
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Paint
-import android.graphics.Typeface
+import android.graphics.Rect as AndroidRect
+import android.graphics.RectF
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,23 +31,25 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.toArgb
 import com.codextraffic.TrafficViewModel
 import com.codextraffic.model.ConnectionStatus
 import com.codextraffic.model.ProjectTraffic
@@ -56,19 +61,19 @@ private val Ink = Color(0xFFE8E1CA)
 private val Panel = Color.Black
 private val PanelDark = Color.Black
 private val GridLine = Color(0xFF171717)
-private val BotShell = Color(0xFFC9922D)
-private val BotShellDark = Color(0xFF5F4316)
-private val BotShadow = Color(0xFF4A3411)
-private val BotScreen = Color(0xFF020706)
-private val LensRim = Color(0xFF9B772E)
-private val LensGlass = Color(0xFF061012)
-private val TreadRubber = Color(0xFF080808)
-private val TreadDot = Color(0xFF262626)
+private val BotShell = Color(0xFFECEFF4)
+private val BotShellDark = Color(0xFF5E6978)
+private val BotShadow = Color(0xFF131820)
+private val BotScreen = Color(0xFF198FE8)
+private val BotCheek = Color(0xFFFF8AB4)
 private val StatusGreen = Color(0xFF36D66B)
 private val StatusYellow = Color(0xFFE9C846)
 private val StatusRed = Color(0xFFE34A4A)
 private val StatusBlue = Color(0xFF69B7FF)
 private val Muted = Color(0xFF747474)
+private const val CodexBsodAssetFile = "codex_bsod_spritesheet.webp"
+private const val BsodFrameWidth = 192
+private const val BsodFrameHeight = 208
 
 @Composable
 fun CodexTrafficApp(viewModel: TrafficViewModel) {
@@ -183,13 +188,56 @@ private fun PetBot(
     mood: BotMood,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    val bsodSpritesheet = remember(context) {
+        runCatching {
+            context.assets.open(CodexBsodAssetFile).use(BitmapFactory::decodeStream)
+        }.getOrNull()
+    }
+
     Canvas(
         modifier = modifier
             .background(Color.Black)
-            .border(1.dp, GridLine, RoundedCornerShape(8.dp)),
+            .border(1.dp, GridLine, RoundedCornerShape(8.dp))
+            .semantics { contentDescription = "蓝屏白壳桌宠" },
     ) {
-        drawPet(mood)
+        if (bsodSpritesheet != null) {
+            drawBsodPet(bsodSpritesheet, mood)
+        } else {
+            drawPet(mood)
+        }
     }
+}
+
+private fun DrawScope.drawBsodPet(spritesheet: Bitmap, mood: BotMood) {
+    val side = min(size.width, size.height)
+    val frame = mood.bsodFrame
+    val source = AndroidRect(
+        frame.column * BsodFrameWidth,
+        frame.row * BsodFrameHeight,
+        (frame.column + 1) * BsodFrameWidth,
+        (frame.row + 1) * BsodFrameHeight,
+    )
+    val targetWidth = side * 0.76f
+    val targetHeight = targetWidth * BsodFrameHeight / BsodFrameWidth
+    val left = (size.width - targetWidth) / 2f
+    val top = (size.height - targetHeight) / 2f - side * 0.02f
+    val target = RectF(left, top, left + targetWidth, top + targetHeight)
+
+    drawRoundRect(
+        color = Color(0xFF020202),
+        topLeft = Offset(size.width * 0.24f, top + targetHeight * 0.87f),
+        size = Size(size.width * 0.52f, side * 0.050f),
+        cornerRadius = CornerRadius(side * 0.06f, side * 0.06f),
+    )
+    drawContext.canvas.nativeCanvas.drawBitmap(
+        spritesheet,
+        source,
+        target,
+        Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            isDither = true
+        },
+    )
 }
 
 private fun DrawScope.drawPet(mood: BotMood) {
@@ -197,245 +245,64 @@ private fun DrawScope.drawPet(mood: BotMood) {
     val w = size.width
     val h = size.height
     val unit = side / 100f
-    val accent = mood.accent
+    val headLeft = w * 0.24f
+    val headTop = h * 0.22f
+    val headWidth = w * 0.52f
+    val headHeight = h * 0.34f
+    val screenLeft = headLeft + headWidth * 0.14f
+    val screenTop = headTop + headHeight * 0.24f
+    val screenWidth = headWidth * 0.72f
+    val screenHeight = headHeight * 0.46f
 
     drawRoundRect(
         color = Color(0xFF020202),
-        topLeft = Offset(w * 0.10f, h * 0.80f),
-        size = Size(w * 0.80f, h * 0.06f),
+        topLeft = Offset(w * 0.30f, h * 0.74f),
+        size = Size(w * 0.40f, h * 0.045f),
+        cornerRadius = CornerRadius(unit * 5f, unit * 5f),
+    )
+    drawLine(
+        color = BotShellDark,
+        start = Offset(w * 0.50f, h * 0.22f),
+        end = Offset(w * 0.56f, h * 0.14f),
+        strokeWidth = unit * 2f,
+        cap = androidx.compose.ui.graphics.StrokeCap.Round,
+    )
+    drawCircle(StatusBlue, radius = unit * 3.2f, center = Offset(w * 0.57f, h * 0.13f))
+    drawRoundRect(
+        color = BotShell,
+        topLeft = Offset(headLeft, headTop),
+        size = Size(headWidth, headHeight),
         cornerRadius = CornerRadius(unit * 10f, unit * 10f),
     )
-
-    drawArm(w * 0.31f, h * 0.56f, unit, accent, left = true)
-    drawArm(w * 0.69f, h * 0.56f, unit, accent, left = false)
-
-    drawTreads(w, h, unit, accent)
-    drawBody(w, h, unit, mood)
-    drawNeck(w, h, unit)
-    drawEyeBridge(w, h, unit)
-    drawLens(Offset(w * 0.37f, h * 0.27f), unit, mood, left = true)
-    drawLens(Offset(w * 0.63f, h * 0.27f), unit, mood, left = false)
-}
-
-private fun DrawScope.drawLens(
-    center: Offset,
-    unit: Float,
-    mood: BotMood,
-    left: Boolean,
-) {
-    val moodAccent = mood.accent
-    val outer = Size(unit * 27f, unit * 22f)
-    val outerTopLeft = Offset(center.x - outer.width / 2f, center.y - outer.height / 2f)
-    drawOval(
-        brush = Brush.radialGradient(
-            colors = listOf(Color(0xFFD2AA55), LensRim, Color(0xFF342409)),
-            center = Offset(center.x - unit * 4f, center.y - unit * 5f),
-            radius = unit * 18f,
-        ),
-        topLeft = outerTopLeft,
-        size = outer,
-    )
-    drawOval(
-        color = Color.Black.copy(alpha = 0.45f),
-        topLeft = Offset(outerTopLeft.x + unit * 1.2f, outerTopLeft.y + unit * 1.4f),
-        size = Size(outer.width - unit * 2.4f, outer.height - unit * 2.6f),
-        style = Stroke(width = unit * 1.1f),
-    )
-
-    val glass = Size(unit * 20f, unit * 14.5f)
-    val glassTopLeft = Offset(center.x - glass.width / 2f, center.y - glass.height / 2f)
-    drawOval(
-        brush = Brush.radialGradient(
-            colors = listOf(Color(0xFF132325), LensGlass, Color.Black),
-            center = Offset(center.x - unit * 3f, center.y - unit * 3f),
-            radius = unit * 14f,
-        ),
-        topLeft = glassTopLeft,
-        size = glass,
-    )
-
-    when (mood.eyePattern) {
-        EyePattern.Bright -> {
-            drawCircle(moodAccent.copy(alpha = 0.16f), radius = unit * 6.8f, center = center)
-            drawCircle(Color(0xFF173A29), radius = unit * 5.2f, center = center)
-            drawCircle(moodAccent.copy(alpha = 0.86f), radius = unit * 2.8f, center = center)
-            drawCircle(Color.Black, radius = unit * 1.1f, center = center)
-        }
-
-        EyePattern.Watch -> {
-            val watchCenter = center.copy(x = center.x + if (left) unit * 1.6f else -unit * 1.6f)
-            drawCircle(moodAccent.copy(alpha = 0.15f), radius = unit * 6.0f, center = watchCenter)
-            drawCircle(Color(0xFF3A3217), radius = unit * 4.8f, center = watchCenter)
-            drawCircle(moodAccent.copy(alpha = 0.82f), radius = unit * 2.5f, center = watchCenter)
-            drawCircle(Color.Black, radius = unit * 1.1f, center = watchCenter)
-        }
-
-        EyePattern.Alert -> {
-            drawRoundRect(
-                color = moodAccent,
-                topLeft = Offset(center.x - unit * 1.2f, center.y - unit * 5f),
-                size = Size(unit * 2.4f, unit * 7.2f),
-                cornerRadius = CornerRadius(unit * 1.2f, unit * 1.2f),
-            )
-            drawCircle(moodAccent, radius = unit * 1.5f, center = Offset(center.x, center.y + unit * 5f))
-        }
-
-        EyePattern.Sleep -> {
-            drawLine(
-                color = mood.eyeColor,
-                start = Offset(center.x - unit * 6f, center.y),
-                end = Offset(center.x + unit * 6f, center.y),
-                strokeWidth = unit * 2.1f,
-                cap = androidx.compose.ui.graphics.StrokeCap.Round,
-            )
-        }
-
-        EyePattern.Offline -> {
-            drawCircle(mood.eyeColor.copy(alpha = 0.25f), radius = unit * 4.5f, center = center)
-            drawCircle(mood.eyeColor, radius = unit * 2.0f, center = center)
-        }
-    }
-
-    drawCircle(
-        color = Color.White.copy(alpha = 0.30f),
-        radius = unit * 1.7f,
-        center = Offset(center.x + if (left) -unit * 4.2f else unit * 4.2f, center.y - unit * 4.6f),
-    )
-}
-
-private fun DrawScope.drawEyeBridge(w: Float, h: Float, unit: Float) {
     drawRoundRect(
-        color = BotShadow,
-        topLeft = Offset(w * 0.46f, h * 0.31f),
-        size = Size(w * 0.08f, unit * 4f),
-        cornerRadius = CornerRadius(unit * 2f, unit * 2f),
+        color = BotShellDark,
+        topLeft = Offset(headLeft, headTop),
+        size = Size(headWidth, headHeight),
+        cornerRadius = CornerRadius(unit * 10f, unit * 10f),
+        style = Stroke(width = unit * 1.3f),
     )
-}
-
-private fun DrawScope.drawNeck(w: Float, h: Float, unit: Float) {
-    drawRoundRect(
-        color = BotShadow,
-        topLeft = Offset(w * 0.475f, h * 0.36f),
-        size = Size(w * 0.05f, h * 0.10f),
-        cornerRadius = CornerRadius(unit * 2f, unit * 2f),
-    )
-    drawCircle(BotShellDark, radius = unit * 2.1f, center = Offset(w * 0.50f, h * 0.41f))
-}
-
-private fun DrawScope.drawBody(w: Float, h: Float, unit: Float, mood: BotMood) {
-    val bodyLeft = w * 0.28f
-    val bodyTop = h * 0.45f
-    val bodyWidth = w * 0.44f
-    val bodyHeight = h * 0.25f
-    drawRoundRect(
-        brush = Brush.verticalGradient(
-            colors = listOf(Color(0xFFD9A849), BotShell, BotShellDark),
-            startY = bodyTop,
-            endY = bodyTop + bodyHeight,
-        ),
-        topLeft = Offset(bodyLeft, bodyTop),
-        size = Size(bodyWidth, bodyHeight),
-        cornerRadius = CornerRadius(unit * 6f, unit * 6f),
-    )
-    drawRoundRect(
-        color = Color.Black.copy(alpha = 0.40f),
-        topLeft = Offset(bodyLeft + bodyWidth * 0.70f, bodyTop + unit * 3f),
-        size = Size(bodyWidth * 0.23f, bodyHeight - unit * 8f),
-        cornerRadius = CornerRadius(unit * 4f, unit * 4f),
-    )
-    drawRoundRect(
-        color = BotShadow,
-        topLeft = Offset(bodyLeft, bodyTop),
-        size = Size(bodyWidth, bodyHeight),
-        cornerRadius = CornerRadius(unit * 6f, unit * 6f),
-        style = Stroke(width = unit * 1.25f),
-    )
-    drawCircle(
-        color = Color.White.copy(alpha = 0.18f),
-        radius = unit * 3.5f,
-        center = Offset(bodyLeft + bodyWidth * 0.23f, bodyTop + bodyHeight * 0.20f),
-    )
-
-    val screenLeft = bodyLeft + bodyWidth * 0.16f
-    val screenTop = bodyTop + bodyHeight * 0.34f
-    val screenWidth = bodyWidth * 0.68f
-    val screenHeight = bodyHeight * 0.30f
     drawRoundRect(
         color = BotScreen,
         topLeft = Offset(screenLeft, screenTop),
         size = Size(screenWidth, screenHeight),
+        cornerRadius = CornerRadius(unit * 6f, unit * 6f),
+    )
+    drawCircle(Color(0xFF03101E), radius = unit * 1.7f, center = Offset(screenLeft + screenWidth * 0.38f, screenTop + screenHeight * 0.45f))
+    drawCircle(Color(0xFF03101E), radius = unit * 1.7f, center = Offset(screenLeft + screenWidth * 0.62f, screenTop + screenHeight * 0.45f))
+    drawCircle(BotCheek, radius = unit * 1.7f, center = Offset(screenLeft + screenWidth * 0.30f, screenTop + screenHeight * 0.66f))
+    drawCircle(BotCheek, radius = unit * 1.7f, center = Offset(screenLeft + screenWidth * 0.70f, screenTop + screenHeight * 0.66f))
+    drawRoundRect(
+        color = BotShell,
+        topLeft = Offset(w * 0.39f, h * 0.56f),
+        size = Size(w * 0.22f, h * 0.17f),
+        cornerRadius = CornerRadius(unit * 6f, unit * 6f),
+    )
+    drawRoundRect(
+        color = mood.accent,
+        topLeft = Offset(w * 0.44f, h * 0.60f),
+        size = Size(w * 0.12f, h * 0.045f),
         cornerRadius = CornerRadius(unit * 3.2f, unit * 3.2f),
     )
-    drawRoundRect(
-        color = mood.accent.copy(alpha = 0.62f),
-        topLeft = Offset(screenLeft, screenTop),
-        size = Size(screenWidth, screenHeight),
-        cornerRadius = CornerRadius(unit * 3.2f, unit * 3.2f),
-        style = Stroke(width = unit * 0.85f),
-    )
-    drawContext.canvas.nativeCanvas.drawText(
-        mood.bellyText,
-        screenLeft + screenWidth / 2f,
-        screenTop + screenHeight * 0.68f,
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = mood.accent.toArgb()
-            textAlign = Paint.Align.CENTER
-            textSize = unit * 6.2f
-            typeface = Typeface.DEFAULT_BOLD
-        },
-    )
-
-    repeat(5) { index ->
-        drawCircle(
-            color = if (index == 2) mood.accent else BotShadow,
-            radius = unit * 1.45f,
-            center = Offset(bodyLeft + bodyWidth * (0.22f + index * 0.14f), bodyTop + bodyHeight * 0.80f),
-        )
-    }
-}
-
-private fun DrawScope.drawArm(anchorX: Float, anchorY: Float, unit: Float, accent: Color, left: Boolean) {
-    val dir = if (left) -1f else 1f
-    drawLine(
-        color = BotShadow,
-        start = Offset(anchorX, anchorY),
-        end = Offset(anchorX + dir * unit * 10f, anchorY + unit * 8f),
-        strokeWidth = unit * 2.5f,
-        cap = androidx.compose.ui.graphics.StrokeCap.Round,
-    )
-    drawCircle(BotShellDark, radius = unit * 3f, center = Offset(anchorX + dir * unit * 11f, anchorY + unit * 9f))
-    drawCircle(accent.copy(alpha = 0.38f), radius = unit * 1.4f, center = Offset(anchorX + dir * unit * 11f, anchorY + unit * 9f))
-}
-
-private fun DrawScope.drawTreads(w: Float, h: Float, unit: Float, accent: Color) {
-    val left = w * 0.24f
-    val top = h * 0.70f
-    val width = w * 0.52f
-    val height = h * 0.12f
-    drawRoundRect(
-        brush = Brush.verticalGradient(
-            colors = listOf(Color(0xFF171717), TreadRubber, Color.Black),
-            startY = top,
-            endY = top + height,
-        ),
-        topLeft = Offset(left, top),
-        size = Size(width, height),
-        cornerRadius = CornerRadius(height / 2f, height / 2f),
-    )
-    drawRoundRect(
-        color = BotShadow,
-        topLeft = Offset(left, top),
-        size = Size(width, height),
-        cornerRadius = CornerRadius(height / 2f, height / 2f),
-        style = Stroke(width = unit * 1.1f),
-    )
-    repeat(6) { index ->
-        drawCircle(
-            color = if (index == 2 || index == 3) accent.copy(alpha = 0.45f) else TreadDot,
-            radius = unit * 2.7f,
-            center = Offset(left + width * (0.18f + index * 0.13f), top + height / 2f),
-        )
-    }
 }
 
 @Composable
@@ -712,10 +579,16 @@ private enum class BotMood(
     val eyeColor: Color,
     val bellyText: String,
     val eyePattern: EyePattern,
+    val bsodFrame: SpriteFrame,
 ) {
-    Happy(StatusGreen, StatusGreen, "忙", EyePattern.Bright),
-    Watch(StatusYellow, StatusYellow, "看", EyePattern.Watch),
-    Alert(StatusRed, StatusRed, "!!!", EyePattern.Alert),
-    Sleepy(Muted, Color(0xFF5C5C5C), "歇", EyePattern.Sleep),
-    Offline(StatusBlue, Color(0xFF4E6470), "等", EyePattern.Offline),
+    Happy(StatusGreen, StatusGreen, "忙", EyePattern.Bright, SpriteFrame(row = 3, column = 2)),
+    Watch(StatusYellow, StatusYellow, "看", EyePattern.Watch, SpriteFrame(row = 0, column = 0)),
+    Alert(StatusRed, StatusRed, "!!!", EyePattern.Alert, SpriteFrame(row = 5, column = 4)),
+    Sleepy(Muted, Color(0xFF5C5C5C), "歇", EyePattern.Sleep, SpriteFrame(row = 0, column = 1)),
+    Offline(StatusBlue, Color(0xFF4E6470), "等", EyePattern.Offline, SpriteFrame(row = 5, column = 1)),
 }
+
+private data class SpriteFrame(
+    val row: Int,
+    val column: Int,
+)

@@ -2,13 +2,16 @@
 
 一台旧 Android 手机可以摆在旁边，当作 Codex 项目状态桌宠。macOS companion
 只读本机 Codex 状态，通过 BLE 广播 compact JSON；Android app 连接后显示高保真
-双目履带机器人、状态气泡和项目看板。
+BSOD 蓝屏小机器人、状态气泡和项目看板。
 
 核心目标不是“显示一个颜色”，而是让用户不用一直盯着 Codex：桌宠会把正在推进、
 近期有动静、需要介入或可能卡住的项目排出来。
 
-视觉上优先照顾旧手机常亮场景：背景和面板尽量使用纯黑，只点亮机器人眼睛、
+视觉上优先照顾旧手机常亮场景：背景和面板尽量使用纯黑，只点亮蓝色屏幕脸、
 胸屏、连接状态和必要的项目状态提示，降低 OLED 屏耗电和烧屏风险。
+
+Android 会优先加载本机同步的 Codex BSOD spritesheet。该资源来自本机
+`/Applications/Codex.app`，不提交进仓库；缺失时 app 会回退到内置绘制版本。
 
 ## Projects
 
@@ -59,6 +62,16 @@ platform-tools, and Gradle 9.1.0. To use it in a shell:
 ```bash
 source scripts/use-android-toolchain.sh
 ```
+
+如需使用 Codex 原版 BSOD 桌宠资源，先运行：
+
+```bash
+scripts/sync-codex-bsod-asset.sh
+```
+
+脚本会从本机 Codex app 的 `app.asar` 提取 `bsod-spritesheet-v4-*.webp` 到
+`android/app/src/main/assets/codex_bsod_spritesheet.webp`。该文件被 `.gitignore`
+忽略，只用于本机打包。
 
 ## Run the macOS Companion
 

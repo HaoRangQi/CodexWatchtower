@@ -10,6 +10,7 @@ mac-companion/dist/
 android/.gradle/
 android/local.properties
 android/**/build/
+android/app/src/main/assets/codex_bsod_spritesheet.webp
 .gradle-home/
 
 # IDE
