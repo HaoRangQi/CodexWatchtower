@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>com.codextraffic.companion</string>
+    <key>CFBundleName</key>
+    <string>Codex Traffic</string>
+    <key>CFBundleExecutable</key>
+    <string>codex-traffic</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Codex Traffic uses Bluetooth to broadcast local Codex activity to the Android traffic light app.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Codex Traffic uses Bluetooth to broadcast local Codex activity to the Android traffic light app.</string>
+</dict>
+</plist>

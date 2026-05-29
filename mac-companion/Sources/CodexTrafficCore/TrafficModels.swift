@@ -1,0 +1,121 @@
+import Foundation
+
+public enum TrafficLight: String, Codable, Sendable {
+    case green = "g"
+    case yellow = "y"
+    case red = "r"
+}
+
+public enum ReasonCode: String, Codable, Sendable {
+    case work
+    case recent
+    case idle
+    case stale
+    case blocked
+    case codexOff = "codex_off"
+}
+
+public struct CodexThread: Equatable, Sendable {
+    public let id: String
+    public let cwd: String
+    public let updatedAt: Date
+
+    public init(id: String, cwd: String, updatedAt: Date) {
+        self.id = id
+        self.cwd = cwd
+        self.updatedAt = updatedAt
+    }
+}
+
+public struct CodexAgentJob: Equatable, Sendable {
+    public let threadId: String
+    public let cwd: String
+    public let status: String
+    public let startedAt: Date
+    public let updatedAt: Date
+    public let maxRuntimeSeconds: Int?
+
+    public init(
+        threadId: String,
+        cwd: String,
+        status: String,
+        startedAt: Date,
+        updatedAt: Date,
+        maxRuntimeSeconds: Int?
+    ) {
+        self.threadId = threadId
+        self.cwd = cwd
+        self.status = status
+        self.startedAt = startedAt
+        self.updatedAt = updatedAt
+        self.maxRuntimeSeconds = maxRuntimeSeconds
+    }
+}
+
+public struct CodexGoal: Equatable, Sendable {
+    public let threadId: String
+    public let status: String
+
+    public init(threadId: String, status: String) {
+        self.threadId = threadId
+        self.status = status
+    }
+}
+
+public struct CodexSnapshot: Equatable, Sendable {
+    public let threads: [CodexThread]
+    public let jobs: [CodexAgentJob]
+    public let goals: [CodexGoal]
+    public let codexProcessRunning: Bool
+
+    public init(
+        threads: [CodexThread],
+        jobs: [CodexAgentJob],
+        goals: [CodexGoal],
+        codexProcessRunning: Bool
+    ) {
+        self.threads = threads
+        self.jobs = jobs
+        self.goals = goals
+        self.codexProcessRunning = codexProcessRunning
+    }
+}
+
+public struct ProjectStatus: Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public let light: TrafficLight
+    public let ageSeconds: Int
+    public let reason: ReasonCode
+
+    public init(id: String, name: String, light: TrafficLight, ageSeconds: Int, reason: ReasonCode) {
+        self.id = id
+        self.name = name
+        self.light = light
+        self.ageSeconds = ageSeconds
+        self.reason = reason
+    }
+}
+
+public struct TrafficStatus: Equatable, Sendable {
+    public let version: Int
+    public let timestamp: Date
+    public let overall: TrafficLight
+    public let projects: [ProjectStatus]
+    public let moreCount: Int
+
+    public init(
+        version: Int,
+        timestamp: Date,
+        overall: TrafficLight,
+        projects: [ProjectStatus],
+        moreCount: Int
+    ) {
+        self.version = version
+        self.timestamp = timestamp
+        self.overall = overall
+        self.projects = projects
+        self.moreCount = moreCount
+    }
+}
+

@@ -1,0 +1,17 @@
+.DS_Store
+
+# SwiftPM
+.build/
+.swiftpm/
+mac-companion/.build/
+mac-companion/dist/
+
+# Android / Gradle
+android/.gradle/
+android/local.properties
+android/**/build/
+.gradle-home/
+
+# IDE
+.idea/
+*.iml
