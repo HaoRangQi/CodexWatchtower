@@ -44,7 +44,7 @@ Android 连接后请求 MTU 517；失败时继续使用普通 read。为兼容�
 
 Android UI 不再以红绿灯为主视觉，而是把状态映射到 BSOD 蓝屏桌宠 mood、极简状态短句和项目行标签。Android 优先从本机 `assets/codex_bsod_spritesheet.webp` 读取 Codex app 的 BSOD spritesheet；该专有资源由 `scripts/sync-codex-bsod-asset.sh` 从 `/Applications/Codex.app/Contents/Resources/app.asar` 提取，不提交进仓库。资源缺失时，UI 回退到内置蓝屏白壳绘制版本。项目行仍保留颜色辅助，但核心提示是“推进中 / 刚动过 / 需要看一眼 / 阻塞 / 离线”等中文语义。
 
-屏幕长期摆放时优先省电：Android 背景、面板和项目行使用纯黑，主界面减少标题、方框和长说明，只保留连接角标、桌宠、整体状态短句和项目状态行。桌宠复刻 Codex avatar 原型的 8×9 spritesheet 帧序列，按状态播放 running / waiting / failed / idle / waving 动作，并保留低幅度整体运动，避免常亮时像静止图片。
+屏幕长期摆放时优先省电：Android 背景、面板和项目行使用纯黑，主界面减少标题、方框和长说明，只保留连接角标、桌宠、整体状态短句和项目状态行。桌宠复刻 Codex avatar 原型的 8×9 spritesheet 帧序列，第一屏按状态播放 running / waiting / failed / idle / waving 动作；第二屏 overlay 小桌宠按动态优先级播放 running / waiting / failed / idle，并用动态行呼吸状态点表示数据正在刷新，避免常亮时像静止图片。
 
 ## Android 行为
 
@@ -53,8 +53,8 @@ Android UI 用户可见文案使用中文。连接状态单独显示，不混入
 Android 使用横向分页：
 
 - 第一屏是常亮桌宠监控。
-- 向左滑动进入第二屏宠物动态，展示 Mac companion 生成的结构化项目动态。视觉形态贴近 Codex avatar overlay：左上浮动通知托盘、右下小桌宠、纯黑背景和轻量网格。
-- 再向左滑动进入第三屏 `信号矩阵`，展示偏极客画风的 HUD 仪表：雷达环、扫描线、信号柱、项目轨道和中文状态摘要。第三屏不使用终端 JSON 文本作为主界面。
+- 向左滑动进入第二屏宠物动态，展示 Mac companion 生成的结构化项目动态。视觉形态贴近 Codex avatar overlay：固定原型比例内容框、左上浮动通知托盘、右下小桌宠、纯黑背景和轻量网格。
+- 再向左滑动进入第三屏 `项目信号`，展示偏极客画风的 HUD 仪表：雷达环、扫描线、信号柱、项目轨道和中文状态摘要。第三屏不使用终端 JSON 文本作为主界面。
 
 第一屏由三层组成：
 

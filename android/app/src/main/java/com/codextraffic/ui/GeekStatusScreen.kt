@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -35,9 +37,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.codextraffic.model.ProjectTraffic
+import com.codextraffic.model.ReasonCode
 import com.codextraffic.model.TrafficLight
 import com.codextraffic.model.TrafficUiState
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.sin
 
 @Composable
 fun GeekStatusScreen(
@@ -49,7 +55,7 @@ fun GeekStatusScreen(
         modifier = modifier
             .fillMaxSize()
             .background(GeekColors.Background)
-            .padding(horizontal = 14.dp, vertical = 14.dp)
+            .padding(horizontal = 12.dp, vertical = 12.dp)
             .testTag("geek_status_screen"),
     ) {
         Canvas(
@@ -72,20 +78,29 @@ fun GeekStatusScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "信号矩阵",
+                    text = "项目信号",
                     color = GeekColors.Ink,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
+                    fontSize = 17.sp,
                     letterSpacing = 0.sp,
                 )
                 OverallChip(uiState.snapshot.overall)
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
             SignalSummary(uiState)
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(16.dp))
+            OrbitalHud(
+                projects = projects,
+                overall = uiState.snapshot.overall,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(250.dp)
+                    .testTag("geek_orbital_hud"),
+            )
+            Spacer(Modifier.height(10.dp))
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
                 modifier = Modifier.fillMaxSize(),
             ) {
                 items(projects, key = { it.id }) { project ->
@@ -178,12 +193,150 @@ private fun MetricCell(
 }
 
 @Composable
+private fun OrbitalHud(
+    projects: List<ProjectTraffic>,
+    overall: TrafficLight,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        val side = minOf(maxWidth, maxHeight)
+        val orbitProjects = projects.take(6)
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val center = Offset(size.width * 0.5f, size.height * 0.52f)
+            val radius = min(size.width, size.height) * 0.34f
+            drawCircle(
+                color = overall.geekAccent().copy(alpha = 0.05f),
+                radius = radius * 1.08f,
+                center = center,
+            )
+            listOf(1f, 0.68f, 0.36f).forEach { scale ->
+                drawCircle(
+                    color = overall.geekAccent().copy(alpha = 0.18f * scale),
+                    radius = radius * scale,
+                    center = center,
+                    style = Stroke(width = 1.dp.toPx()),
+                )
+            }
+            drawLine(
+                color = GeekColors.Blue.copy(alpha = 0.28f),
+                start = Offset(center.x - radius * 1.18f, center.y),
+                end = Offset(center.x + radius * 1.18f, center.y),
+                strokeWidth = 1.dp.toPx(),
+            )
+            drawLine(
+                color = GeekColors.Blue.copy(alpha = 0.20f),
+                start = Offset(center.x, center.y - radius * 1.18f),
+                end = Offset(center.x, center.y + radius * 1.18f),
+                strokeWidth = 1.dp.toPx(),
+            )
+            orbitProjects.forEachIndexed { index, project ->
+                val angle = (-90.0 + index * (360.0 / orbitProjects.size.coerceAtLeast(1))) * PI / 180.0
+                val pointRadius = radius * when (project.light) {
+                    TrafficLight.Green -> 0.84f
+                    TrafficLight.Yellow -> 0.64f
+                    TrafficLight.Red -> 0.44f
+                }
+                val point = Offset(
+                    x = center.x + cos(angle).toFloat() * pointRadius,
+                    y = center.y + sin(angle).toFloat() * pointRadius,
+                )
+                drawLine(
+                    color = project.light.geekAccent().copy(alpha = 0.18f),
+                    start = center,
+                    end = point,
+                    strokeWidth = 1.dp.toPx(),
+                )
+                drawCircle(
+                    color = project.light.geekAccent().copy(alpha = 0.18f),
+                    radius = 13.dp.toPx(),
+                    center = point,
+                )
+                drawCircle(
+                    color = project.light.geekAccent(),
+                    radius = 5.dp.toPx(),
+                    center = point,
+                )
+            }
+        }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = overall.geekCoreLabel(),
+                color = overall.geekAccent(),
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+                letterSpacing = 0.sp,
+            )
+            Text(
+                text = "${projects.count()} 个项目",
+                color = GeekColors.Muted,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 11.sp,
+                letterSpacing = 0.sp,
+            )
+        }
+
+        orbitProjects.forEachIndexed { index, project ->
+            val angle = (-90.0 + index * (360.0 / orbitProjects.size.coerceAtLeast(1))) * PI / 180.0
+            val orbit = side * when (project.light) {
+                TrafficLight.Green -> 0.34f
+                TrafficLight.Yellow -> 0.27f
+                TrafficLight.Red -> 0.20f
+            }
+            OrbitalProjectChip(
+                project = project,
+                modifier = Modifier
+                    .offset(
+                        x = (cos(angle).toFloat() * orbit.value).dp,
+                        y = (sin(angle).toFloat() * orbit.value).dp,
+                    )
+                    .testTag("geek_project_orbit_${project.name}"),
+            )
+        }
+    }
+}
+
+@Composable
+private fun OrbitalProjectChip(
+    project: ProjectTraffic,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .widthIn(max = 116.dp)
+            .background(Color.Black.copy(alpha = 0.72f), RoundedCornerShape(50))
+            .padding(horizontal = 7.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .background(project.light.geekAccent(), CircleShape),
+        )
+        Spacer(Modifier.width(5.dp))
+        Text(
+            text = project.name,
+            color = GeekColors.Ink,
+            fontFamily = FontFamily.Monospace,
+            fontSize = 10.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            letterSpacing = 0.sp,
+        )
+    }
+}
+
+@Composable
 private fun GeekSignalRow(project: ProjectTraffic) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(GeekColors.Row, RoundedCornerShape(6.dp))
-            .padding(horizontal = 10.dp, vertical = 9.dp)
+            .background(GeekColors.Row, RoundedCornerShape(4.dp))
+            .padding(horizontal = 9.dp, vertical = 6.dp)
             .testTag("geek_signal_${project.name}"),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -195,16 +348,16 @@ private fun GeekSignalRow(project: ProjectTraffic) {
                 color = GeekColors.Ink,
                 fontFamily = FontFamily.Monospace,
                 fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
+                fontSize = 12.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 letterSpacing = 0.sp,
             )
             Text(
-                text = project.reason.wireValue,
+                text = project.geekReasonLabel(),
                 color = GeekColors.Muted,
                 fontFamily = FontFamily.Monospace,
-                fontSize = 10.sp,
+                fontSize = 9.sp,
                 letterSpacing = 0.sp,
             )
         }
@@ -213,7 +366,7 @@ private fun GeekSignalRow(project: ProjectTraffic) {
             color = project.light.geekAccent(),
             fontFamily = FontFamily.Monospace,
             fontWeight = FontWeight.Bold,
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             letterSpacing = 0.sp,
         )
     }
@@ -339,15 +492,30 @@ private fun TrafficLight.geekAccent(): Color = when (this) {
 }
 
 private fun TrafficLight.geekLabel(): String = when (this) {
-    TrafficLight.Green -> "ACTIVE"
-    TrafficLight.Yellow -> "WATCH"
-    TrafficLight.Red -> "QUIET"
+    TrafficLight.Green -> "推进"
+    TrafficLight.Yellow -> "待判"
+    TrafficLight.Red -> "静默"
+}
+
+private fun TrafficLight.geekCoreLabel(): String = when (this) {
+    TrafficLight.Green -> "推进"
+    TrafficLight.Yellow -> "待判"
+    TrafficLight.Red -> "静默"
 }
 
 private fun ProjectTraffic.ageLabel(): String = when {
     ageSeconds < 60 -> "${ageSeconds} 秒"
     ageSeconds < 3600 -> "${ageSeconds / 60} 分"
     else -> "${ageSeconds / 3600} 时"
+}
+
+private fun ProjectTraffic.geekReasonLabel(): String = when (reason) {
+    ReasonCode.Work -> "正在推进"
+    ReasonCode.Recent -> "刚有动静"
+    ReasonCode.Idle -> "暂时安静"
+    ReasonCode.Stale -> "疑似卡住"
+    ReasonCode.Blocked -> "等待处理"
+    ReasonCode.CodexOff -> "Codex 离线"
 }
 
 private object GeekColors {

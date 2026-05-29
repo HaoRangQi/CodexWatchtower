@@ -4,6 +4,12 @@ import android.graphics.BitmapFactory
 import android.graphics.Paint
 import android.graphics.Rect as AndroidRect
 import android.graphics.RectF
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -12,6 +18,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,6 +26,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -38,6 +46,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -50,11 +59,12 @@ import com.codextraffic.model.PetFeedItem
 import com.codextraffic.model.ReasonCode
 import com.codextraffic.model.TrafficLight
 import com.codextraffic.model.TrafficUiState
-import kotlinx.coroutines.delay
 
 private const val OverlayAssetFile = "codex_bsod_spritesheet.webp"
 private const val OverlayFrameWidth = 192
 private const val OverlayFrameHeight = 208
+private const val PrototypeViewportWidth = 356f
+private const val PrototypeViewportHeight = 320f
 
 @Composable
 fun PetFeedScreen(
@@ -63,48 +73,64 @@ fun PetFeedScreen(
     modifier: Modifier = Modifier,
 ) {
     val feedItems = uiState.snapshot.feedItems.sortedWith(overlayFeedComparator)
+    val mascotState = feedItems.overlayMascotState(uiState.snapshot.overall)
 
-    BoxWithConstraints(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(OverlayColors.Background)
             .padding(10.dp)
             .testTag("pet_feed_screen"),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        val trayWidth = maxWidth * 0.78f
-        val trayHeight = maxHeight * 0.48f
-        val mascotSize = maxWidth * 0.34f
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = PrototypeViewportWidth.dp)
+                .aspectRatio(PrototypeViewportWidth / PrototypeViewportHeight)
+                .testTag("avatar_overlay_content_frame"),
+        ) {
+            val trayWidth = maxWidth * (276f / PrototypeViewportWidth)
+            val trayHeight = maxHeight * (131f / PrototypeViewportHeight)
+            val trayLeft = maxWidth * (80f / PrototypeViewportWidth)
+            val trayTop = maxHeight * (56f / PrototypeViewportHeight)
+            val mascotWidth = maxWidth * (112f / PrototypeViewportWidth)
+            val mascotHeight = maxHeight * (121f / PrototypeViewportHeight)
+            val mascotLeft = maxWidth * (244f / PrototypeViewportWidth)
+            val mascotTop = maxHeight * (191f / PrototypeViewportHeight)
 
-        OverlayNoise()
-        NotificationTray(
-            feedItems = feedItems,
-            omittedFeedCount = uiState.snapshot.omittedFeedCount,
-            modifier = Modifier
-                .width(trayWidth)
-                .height(trayHeight)
-                .align(Alignment.TopStart)
-                .offset(x = 8.dp, y = 38.dp)
-                .testTag("avatar_notification_tray"),
-        )
-        FloatingMascot(
-            light = uiState.snapshot.overall,
-            activeCount = feedItems.size,
-            motionEnabled = mascotMotionEnabled,
-            modifier = Modifier
-                .size(mascotSize)
-                .align(Alignment.BottomEnd)
-                .offset(x = (-6).dp, y = (-22).dp)
-                .testTag("avatar_overlay_mascot"),
-        )
-        Text(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 2.dp, bottom = 4.dp),
-            text = "‹",
-            color = OverlayColors.Faint,
-            fontSize = 20.sp,
-            letterSpacing = 0.sp,
-        )
+            OverlayNoise()
+            NotificationTray(
+                feedItems = feedItems,
+                omittedFeedCount = uiState.snapshot.omittedFeedCount,
+                modifier = Modifier
+                    .width(trayWidth)
+                    .height(trayHeight)
+                    .align(Alignment.TopStart)
+                    .offset(x = trayLeft, y = trayTop)
+                    .testTag("avatar_notification_tray"),
+            )
+            FloatingMascot(
+                state = mascotState,
+                activeCount = feedItems.size,
+                motionEnabled = mascotMotionEnabled,
+                modifier = Modifier
+                    .width(mascotWidth)
+                    .height(mascotHeight)
+                    .align(Alignment.TopStart)
+                    .offset(x = mascotLeft, y = mascotTop)
+                    .testTag("avatar_overlay_mascot"),
+            )
+            Text(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 2.dp, bottom = 4.dp),
+                text = "‹",
+                color = OverlayColors.Faint,
+                fontSize = 20.sp,
+                letterSpacing = 0.sp,
+            )
+        }
     }
 }
 
@@ -149,18 +175,18 @@ private fun NotificationTray(
         modifier = modifier
             .shadow(14.dp, RoundedCornerShape(18.dp))
             .background(OverlayColors.Tray, RoundedCornerShape(18.dp))
-            .padding(vertical = 8.dp),
+            .padding(vertical = 6.dp),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .padding(horizontal = 12.dp, vertical = 3.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = "最新",
                 color = OverlayColors.Ink,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 0.sp,
             )
@@ -168,7 +194,7 @@ private fun NotificationTray(
             Text(
                 text = if (feedItems.isEmpty()) "0" else "${feedItems.size}",
                 color = OverlayColors.Muted,
-                fontSize = 11.sp,
+                fontSize = 10.sp,
                 letterSpacing = 0.sp,
             )
         }
@@ -188,8 +214,8 @@ private fun NotificationTray(
                         Text(
                             text = "+$omittedFeedCount 更早",
                             color = OverlayColors.Faint,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            fontSize = 10.sp,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                             letterSpacing = 0.sp,
                         )
                     }
@@ -219,9 +245,9 @@ private fun OverlayNotificationRow(item: PetFeedItem) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 3.dp)
-            .background(OverlayColors.Row, RoundedCornerShape(13.dp))
-            .padding(horizontal = 10.dp, vertical = 9.dp)
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .background(OverlayColors.Row, RoundedCornerShape(12.dp))
+            .padding(horizontal = 9.dp, vertical = 6.dp)
             .testTag("feed_${item.projectId}"),
     ) {
         Row(
@@ -233,7 +259,7 @@ private fun OverlayNotificationRow(item: PetFeedItem) {
                 modifier = Modifier.weight(1f),
                 text = item.title,
                 color = OverlayColors.Ink,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -242,7 +268,7 @@ private fun OverlayNotificationRow(item: PetFeedItem) {
             Text(
                 text = item.overlayAge(),
                 color = OverlayColors.Faint,
-                fontSize = 10.sp,
+                fontSize = 9.sp,
                 letterSpacing = 0.sp,
             )
         }
@@ -250,14 +276,14 @@ private fun OverlayNotificationRow(item: PetFeedItem) {
         Text(
             text = item.body,
             color = OverlayColors.Muted,
-            fontSize = 11.sp,
-            lineHeight = 15.sp,
+            fontSize = 10.sp,
+            lineHeight = 13.sp,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             letterSpacing = 0.sp,
         )
         if (item.reason == ReasonCode.Blocked || item.reason == ReasonCode.Stale) {
-            Spacer(Modifier.height(7.dp))
+            Spacer(Modifier.height(5.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 OverlayAction("查看", OverlayColors.Button)
                 OverlayAction("忽略", OverlayColors.Danger.copy(alpha = 0.18f))
@@ -268,10 +294,26 @@ private fun OverlayNotificationRow(item: PetFeedItem) {
 
 @Composable
 private fun StatusGlyph(item: PetFeedItem) {
+    val transition = rememberInfiniteTransition(label = "feed_pulse")
+    val pulse by transition.animateFloat(
+        initialValue = 0.68f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = item.reason.overlayPulseMillis()),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "feed_pulse_alpha",
+    )
     Box(
         modifier = Modifier
             .size(17.dp)
-            .background(item.light.overlayAccent().copy(alpha = 0.16f), CircleShape),
+            .graphicsLayer {
+                alpha = pulse
+                scaleX = 0.92f + pulse * 0.08f
+                scaleY = 0.92f + pulse * 0.08f
+            }
+            .background(item.light.overlayAccent().copy(alpha = 0.16f), CircleShape)
+            .testTag("feed_pulse_${item.projectId}"),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -302,19 +344,25 @@ private fun OverlayAction(
 
 @Composable
 private fun FloatingMascot(
-    light: TrafficLight,
+    state: OverlayAvatarState,
     activeCount: Int,
     motionEnabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
-        OverlayMascot(light, motionEnabled)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .testTag("avatar_mascot_state_${state.wireName}"),
+        ) {
+            OverlayMascot(state, motionEnabled)
+        }
         if (activeCount > 0) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .offset { IntOffset(x = (-2).dp.roundToPx(), y = 2.dp.roundToPx()) }
-                    .background(light.overlayAccent(), CircleShape)
+                    .background(state.accent, CircleShape)
                     .padding(horizontal = 8.dp, vertical = 5.dp),
                 contentAlignment = Alignment.Center,
             ) {
@@ -332,7 +380,7 @@ private fun FloatingMascot(
 
 @Composable
 private fun OverlayMascot(
-    light: TrafficLight,
+    state: OverlayAvatarState,
     motionEnabled: Boolean,
 ) {
     val context = LocalContext.current
@@ -341,34 +389,21 @@ private fun OverlayMascot(
             context.assets.open(OverlayAssetFile).use(BitmapFactory::decodeStream)
         }.getOrNull()
     }
-    var frame by remember(light) { mutableStateOf(0) }
-
-    LaunchedEffect(light, motionEnabled) {
-        if (!motionEnabled) {
-            frame = 0
-            return@LaunchedEffect
-        }
-        while (true) {
-            delay(180)
-            frame = (frame + 1) % 6
-        }
-    }
+    val frame = rememberOverlaySpriteFrame(
+        animation = state.animation,
+        animationEnabled = motionEnabled,
+        animationKey = state,
+    )
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         if (spritesheet == null) {
-            drawOverlayFallbackMascot(light)
+            drawOverlayFallbackMascot(state.accent)
         } else {
-            val row = when (light) {
-                TrafficLight.Green -> 7
-                TrafficLight.Yellow -> 6
-                TrafficLight.Red -> 5
-            }
-            val column = frame.coerceIn(0, 5)
             val source = AndroidRect(
-                column * OverlayFrameWidth,
-                row * OverlayFrameHeight,
-                (column + 1) * OverlayFrameWidth,
-                (row + 1) * OverlayFrameHeight,
+                frame.column * OverlayFrameWidth,
+                frame.row * OverlayFrameHeight,
+                (frame.column + 1) * OverlayFrameWidth,
+                (frame.row + 1) * OverlayFrameHeight,
             )
             val width = size.width * 0.82f
             val height = width * OverlayFrameHeight / OverlayFrameWidth
@@ -386,8 +421,34 @@ private fun OverlayMascot(
     }
 }
 
-private fun DrawScope.drawOverlayFallbackMascot(light: TrafficLight) {
-    val accent = light.overlayAccent()
+@Composable
+private fun rememberOverlaySpriteFrame(
+    animation: OverlaySpriteAnimation,
+    animationEnabled: Boolean,
+    animationKey: Any,
+): OverlaySpriteFrame {
+    var frame by remember(animationKey) { mutableStateOf(animation.firstFrame) }
+
+    LaunchedEffect(animation, animationEnabled, animationKey) {
+        frame = animation.firstFrame
+        if (!animationEnabled || animation.frames.size == 1) {
+            return@LaunchedEffect
+        }
+
+        var startedAt: Long? = null
+        while (true) {
+            val now = withInfiniteAnimationFrameMillis { it }
+            if (startedAt == null) {
+                startedAt = now
+            }
+            frame = animation.frameAt(now - startedAt)
+        }
+    }
+
+    return frame
+}
+
+private fun DrawScope.drawOverlayFallbackMascot(accent: Color) {
     drawRoundRect(
         color = Color(0xFFECEFF4),
         topLeft = Offset(size.width * 0.24f, size.height * 0.28f),
@@ -440,10 +501,118 @@ private fun ReasonCode.overlayIcon(): String = when (this) {
     ReasonCode.CodexOff -> "×"
 }
 
+private fun ReasonCode.overlayPulseMillis(): Int = when (this) {
+    ReasonCode.Work -> 680
+    ReasonCode.Recent -> 980
+    ReasonCode.Idle -> 1600
+    ReasonCode.Stale,
+    ReasonCode.Blocked,
+    ReasonCode.CodexOff -> 540
+}
+
+private fun List<PetFeedItem>.overlayMascotState(overall: TrafficLight): OverlayAvatarState {
+    val topReason = minByOrNull { it.overlayPriority() }?.reason
+    return when {
+        topReason == ReasonCode.Work -> OverlayAvatarState.Running
+        topReason == ReasonCode.Recent -> OverlayAvatarState.Waiting
+        topReason == ReasonCode.Stale || topReason == ReasonCode.Blocked || topReason == ReasonCode.CodexOff -> {
+            OverlayAvatarState.Failed
+        }
+        overall == TrafficLight.Green -> OverlayAvatarState.Running
+        overall == TrafficLight.Yellow -> OverlayAvatarState.Waiting
+        else -> OverlayAvatarState.Idle
+    }
+}
+
 private fun TrafficLight.overlayAccent() = when (this) {
     TrafficLight.Green -> OverlayColors.Green
     TrafficLight.Yellow -> OverlayColors.Yellow
     TrafficLight.Red -> OverlayColors.Danger
+}
+
+private enum class OverlayAvatarState(
+    val wireName: String,
+    val accent: Color,
+    val animation: OverlaySpriteAnimation,
+) {
+    Idle("idle", OverlayColors.Muted, OverlayAvatarAnimations.Idle),
+    Running("running", OverlayColors.Green, OverlayAvatarAnimations.Running),
+    Waiting("waiting", OverlayColors.Yellow, OverlayAvatarAnimations.Waiting),
+    Failed("failed", OverlayColors.Danger, OverlayAvatarAnimations.Failed),
+}
+
+private data class OverlaySpriteFrame(
+    val row: Int,
+    val column: Int,
+    val durationMs: Int,
+)
+
+private data class OverlaySpriteAnimation(
+    val frames: List<OverlaySpriteFrame>,
+    val loopStartIndex: Int,
+) {
+    val firstFrame: OverlaySpriteFrame = frames.first()
+
+    fun frameAt(elapsedMs: Long): OverlaySpriteFrame {
+        if (frames.size == 1) {
+            return firstFrame
+        }
+
+        val introDuration = frames.take(loopStartIndex).sumOf { it.durationMs }
+        val loopFrames = frames.drop(loopStartIndex).ifEmpty { frames }
+        val loopDuration = loopFrames.sumOf { it.durationMs }.coerceAtLeast(1)
+        val position = if (elapsedMs < introDuration) {
+            elapsedMs.toInt()
+        } else {
+            introDuration + ((elapsedMs - introDuration) % loopDuration).toInt()
+        }
+
+        var cursor = 0
+        for (candidate in frames.take(loopStartIndex) + loopFrames) {
+            cursor += candidate.durationMs
+            if (position < cursor) {
+                return candidate
+            }
+        }
+        return loopFrames.last()
+    }
+}
+
+private object OverlayAvatarAnimations {
+    private const val IdleSlowdown = 6
+    private val idleBase = listOf(
+        OverlaySpriteFrame(row = 0, column = 0, durationMs = 280 * IdleSlowdown),
+        OverlaySpriteFrame(row = 0, column = 1, durationMs = 110 * IdleSlowdown),
+        OverlaySpriteFrame(row = 0, column = 2, durationMs = 110 * IdleSlowdown),
+        OverlaySpriteFrame(row = 0, column = 3, durationMs = 140 * IdleSlowdown),
+        OverlaySpriteFrame(row = 0, column = 4, durationMs = 140 * IdleSlowdown),
+        OverlaySpriteFrame(row = 0, column = 5, durationMs = 320 * IdleSlowdown),
+    )
+
+    val Idle = OverlaySpriteAnimation(frames = idleBase, loopStartIndex = 0)
+    val Running = action(row = 7, count = 6, durationMs = 120, lastDurationMs = 220)
+    val Waiting = action(row = 6, count = 6, durationMs = 150, lastDurationMs = 260)
+    val Failed = action(row = 5, count = 8, durationMs = 140, lastDurationMs = 240)
+
+    private fun action(
+        row: Int,
+        count: Int,
+        durationMs: Int,
+        lastDurationMs: Int,
+    ): OverlaySpriteAnimation {
+        val actionFrames = List(count) { column ->
+            OverlaySpriteFrame(
+                row = row,
+                column = column,
+                durationMs = if (column == count - 1) lastDurationMs else durationMs,
+            )
+        }
+        val intro = actionFrames + actionFrames + actionFrames
+        return OverlaySpriteAnimation(
+            frames = intro + idleBase,
+            loopStartIndex = intro.size,
+        )
+    }
 }
 
 private object OverlayColors {

@@ -193,9 +193,12 @@ class TrafficScreenTest {
         composeRule.onNodeWithTag("traffic_pager").performTouchInput { swipeLeft() }
 
         composeRule.onNodeWithTag("pet_feed_screen").assertIsDisplayed()
+        composeRule.onNodeWithTag("avatar_overlay_content_frame").assertIsDisplayed()
         composeRule.onNodeWithTag("avatar_overlay_stage").assertIsDisplayed()
         composeRule.onNodeWithTag("avatar_notification_tray").assertIsDisplayed()
         composeRule.onNodeWithTag("avatar_overlay_mascot").assertIsDisplayed()
+        composeRule.onNodeWithTag("avatar_mascot_state_running").assertIsDisplayed()
+        composeRule.onNodeWithTag("feed_pulse_a1b2c3d4").assertIsDisplayed()
         composeRule.onNodeWithText("最新").assertIsDisplayed()
         composeRule.onNodeWithText("正在推进 loading").assertIsDisplayed()
         composeRule.onNodeWithText("4 秒内有新动作").assertIsDisplayed()
@@ -238,8 +241,10 @@ class TrafficScreenTest {
         composeRule.onNodeWithTag("traffic_pager").performTouchInput { swipeLeft() }
 
         composeRule.onNodeWithTag("geek_status_screen").assertIsDisplayed()
-        composeRule.onNodeWithText("信号矩阵").assertIsDisplayed()
+        composeRule.onNodeWithText("项目信号").assertIsDisplayed()
         composeRule.onNodeWithTag("geek_hud_scope").assertIsDisplayed()
+        composeRule.onNodeWithTag("geek_orbital_hud").assertIsDisplayed()
+        composeRule.onNodeWithTag("geek_project_orbit_loading").assertIsDisplayed()
         composeRule.onNodeWithTag("geek_signal_loading").assertIsDisplayed()
         composeRule.onNodeWithText("loading").assertIsDisplayed()
     }
