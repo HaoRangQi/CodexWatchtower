@@ -14,16 +14,13 @@ Mac companion 读取本机 Codex 结构化状态并广播，Android 展示桌宠
 ## 三屏预览
 
 第一屏：桌宠总览  
-![第一屏：桌宠总览](https://raw.githubusercontent.com/HaoRangQi/CodexWatchtower/main/docs/images/screen-1-main.png)
-[原图链接](https://raw.githubusercontent.com/HaoRangQi/CodexWatchtower/main/docs/images/screen-1-main.png)
+![第一屏：桌宠总览](pics/screen-1-main.png)
 
 第二屏：宠物动态  
-![第二屏：宠物动态](https://raw.githubusercontent.com/HaoRangQi/CodexWatchtower/main/docs/images/screen-2-feed.png)
-[原图链接](https://raw.githubusercontent.com/HaoRangQi/CodexWatchtower/main/docs/images/screen-2-feed.png)
+![第二屏：宠物动态](pics/screen-2-feed.png)
 
 第三屏：项目信号 HUD  
-![第三屏：项目信号 HUD](https://raw.githubusercontent.com/HaoRangQi/CodexWatchtower/main/docs/images/screen-3-geek.png)
-[原图链接](https://raw.githubusercontent.com/HaoRangQi/CodexWatchtower/main/docs/images/screen-3-geek.png)
+![第三屏：项目信号 HUD](pics/screen-3-geek.png)
 
 ## 文档入口
 
