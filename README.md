@@ -11,6 +11,17 @@ Mac companion 读取本机 Codex 结构化状态并广播，Android 展示桌宠
    `source scripts/use-android-toolchain.sh && cd android && ./gradlew installDebug`
 3. 手机打开 app，授予蓝牙权限，确认右上角显示 `已连接`。
 
+## 三屏预览
+
+第一屏：桌宠总览  
+![第一屏：桌宠总览](docs/images/screen-1-main.png)
+
+第二屏：宠物动态  
+![第二屏：宠物动态](docs/images/screen-2-feed.png)
+
+第三屏：项目信号 HUD  
+![第三屏：项目信号 HUD](docs/images/screen-3-geek.png)
+
 ## 文档入口
 
 - 文档导航：`docs/README.md`
