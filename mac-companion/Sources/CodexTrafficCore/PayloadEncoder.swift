@@ -2,9 +2,11 @@ import Foundation
 
 public struct PayloadEncoder: Sendable {
     public let maxBytes: Int
+    public let minimumFeedRows: Int
 
-    public init(maxBytes: Int = 480) {
+    public init(maxBytes: Int = 480, minimumFeedRows: Int = 3) {
         self.maxBytes = maxBytes
+        self.minimumFeedRows = minimumFeedRows
     }
 
     public func encode(_ status: TrafficStatus) throws -> Data {
@@ -24,16 +26,22 @@ public struct PayloadEncoder: Sendable {
             if data.count <= maxBytes {
                 return data
             }
+            if feedRows.count > minimumFeedRows {
+                feedRows.removeLast()
+                moreFeedCount = status.moreFeedCount + status.feedItems.count - feedRows.count
+                continue
+            }
+            if !projectRows.isEmpty {
+                projectRows.removeLast()
+                moreCount = status.moreCount + status.projects.count - projectRows.count
+                continue
+            }
             if !feedRows.isEmpty {
                 feedRows.removeLast()
                 moreFeedCount = status.moreFeedCount + status.feedItems.count - feedRows.count
                 continue
             }
-            guard !projectRows.isEmpty else {
-                throw PayloadEncodingError.payloadCannotFit(maxBytes: maxBytes)
-            }
-            projectRows.removeLast()
-            moreCount = status.moreCount + status.projects.count - projectRows.count
+            throw PayloadEncodingError.payloadCannotFit(maxBytes: maxBytes)
         }
     }
 

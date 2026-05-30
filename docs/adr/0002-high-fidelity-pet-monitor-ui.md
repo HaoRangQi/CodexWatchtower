@@ -46,7 +46,7 @@ Android 主界面从“红绿灯”改为 BSOD 蓝屏桌宠监控：
 
 取舍：
 
-- `Codex Traffic` 设备名和 `g/y/r` 协议字段暂时保留历史命名，避免破坏已验证的 BLE 契约。
+- 设备名在 2026-05-30 统一更名为 `Codex Watchtower`；`g/y/r` 协议字段继续保持兼容。
 - 机器人 mood 仍基于现有启发式状态，不承诺等同 Codex 内部私有运行态。
 - v1 仍是前台 Android app，不做后台 service 或系统通知。
 

@@ -1,7 +1,8 @@
-# Codex Traffic BLE Protocol v1
+# Codex Watchtower BLE Protocol v1
 
 ## UUIDs
 
+- BLE 广播设备名：`Codex Watchtower`
 - Service: `4F4C0001-6C6F-6164-696E-672D636F6465`
 - Status characteristic: `4F4C0002-6C6F-6164-696E-672D636F6465`
 
@@ -28,9 +29,11 @@
 | `f` | Optional pet feed rows: `[projectId, title, body, light, ageSeconds, reason]`. |
 | `n` | Number of omitted pet feed rows after truncation. |
 
-`f` prefers realtime event rows from `~/.codex-traffic/events.jsonl`, then falls
-back to derived structured Codex status rows. It does not carry full conversation
-text, `history.jsonl`, or large logs.
+`f` prefers explicit realtime event rows from `~/.codex-traffic/events.jsonl`,
+then companion-synthesized rows from Codex SQLite snapshots. When the 480-byte
+budget is tight, the encoder keeps up to 3 feed rows before trimming project
+rows so the second screen still has live content. It does not carry full
+conversation text, `history.jsonl`, or large logs.
 
 ## Realtime Event Spool
 

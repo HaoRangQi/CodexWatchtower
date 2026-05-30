@@ -1,7 +1,13 @@
 package com.codextraffic.ui
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,6 +28,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -45,12 +53,24 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
+private data class OrbitalSlot(val x: Float, val y: Float)
+
+private val orbitalSlots = listOf(
+    OrbitalSlot(0f, -1f),
+    OrbitalSlot(0.82f, -0.45f),
+    OrbitalSlot(0.76f, 0.52f),
+    OrbitalSlot(0f, 1f),
+    OrbitalSlot(-0.64f, 0.56f),
+    OrbitalSlot(-0.5f, -0.5f),
+)
+
 @Composable
 fun GeekStatusScreen(
     uiState: TrafficUiState,
     modifier: Modifier = Modifier,
 ) {
     val projects = uiState.snapshot.projects.sortedWith(geekProjectComparator)
+    val scanner by rememberGeekScanner()
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
@@ -64,9 +84,11 @@ fun GeekStatusScreen(
                 .testTag("geek_hud_scope"),
         ) {
             drawGeekGrid()
-            drawRadarScope(uiState.snapshot.overall)
+            drawScopeFrame(scanner)
+            drawRadarScope(uiState.snapshot.overall, scanner)
             drawSignalBars(projects)
-            drawScanLine()
+            drawSignalWave(projects, scanner)
+            drawScanLine(scanner)
         }
 
         Column(
@@ -89,14 +111,20 @@ fun GeekStatusScreen(
             }
             Spacer(Modifier.height(12.dp))
             SignalSummary(uiState)
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(10.dp))
             OrbitalHud(
                 projects = projects,
                 overall = uiState.snapshot.overall,
+                scanner = scanner,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(250.dp)
                     .testTag("geek_orbital_hud"),
+            )
+            Box(
+                modifier = Modifier
+                    .size(1.dp)
+                    .testTag("geek_scanner_motion"),
             )
             Spacer(Modifier.height(10.dp))
             LazyColumn(
@@ -120,6 +148,20 @@ fun GeekStatusScreen(
             }
         }
     }
+}
+
+@Composable
+private fun rememberGeekScanner(): State<Float> {
+    val transition = rememberInfiniteTransition(label = "geek_scanner")
+    return transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 3200),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "geek_scan_phase",
+    )
 }
 
 @Composable
@@ -196,6 +238,7 @@ private fun MetricCell(
 private fun OrbitalHud(
     projects: List<ProjectTraffic>,
     overall: TrafficLight,
+    scanner: Float,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(
@@ -207,6 +250,14 @@ private fun OrbitalHud(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val center = Offset(size.width * 0.5f, size.height * 0.52f)
             val radius = min(size.width, size.height) * 0.34f
+            val scanAngle = (scanner * 360f - 90f) * PI.toFloat() / 180f
+            drawRoundRect(
+                color = GeekColors.PanelStroke.copy(alpha = 0.28f),
+                topLeft = Offset(size.width * 0.08f, size.height * 0.03f),
+                size = Size(size.width * 0.84f, size.height * 0.9f),
+                cornerRadius = CornerRadius(10.dp.toPx()),
+                style = Stroke(width = 1.dp.toPx()),
+            )
             drawCircle(
                 color = overall.geekAccent().copy(alpha = 0.05f),
                 radius = radius * 1.08f,
@@ -232,6 +283,15 @@ private fun OrbitalHud(
                 end = Offset(center.x, center.y + radius * 1.18f),
                 strokeWidth = 1.dp.toPx(),
             )
+            drawLine(
+                color = overall.geekAccent().copy(alpha = 0.46f),
+                start = center,
+                end = Offset(
+                    x = center.x + cos(scanAngle).toFloat() * radius * 1.08f,
+                    y = center.y + sin(scanAngle).toFloat() * radius * 1.08f,
+                ),
+                strokeWidth = 2.dp.toPx(),
+            )
             orbitProjects.forEachIndexed { index, project ->
                 val angle = (-90.0 + index * (360.0 / orbitProjects.size.coerceAtLeast(1))) * PI / 180.0
                 val pointRadius = radius * when (project.light) {
@@ -239,10 +299,8 @@ private fun OrbitalHud(
                     TrafficLight.Yellow -> 0.64f
                     TrafficLight.Red -> 0.44f
                 }
-                val point = Offset(
-                    x = center.x + cos(angle).toFloat() * pointRadius,
-                    y = center.y + sin(angle).toFloat() * pointRadius,
-                )
+                val slot = orbitalSlots[index % orbitalSlots.size]
+                val point = Offset(x = center.x + slot.x * pointRadius, y = center.y + slot.y * pointRadius)
                 drawLine(
                     color = project.light.geekAccent().copy(alpha = 0.18f),
                     start = center,
@@ -281,7 +339,7 @@ private fun OrbitalHud(
         }
 
         orbitProjects.forEachIndexed { index, project ->
-            val angle = (-90.0 + index * (360.0 / orbitProjects.size.coerceAtLeast(1))) * PI / 180.0
+            val slot = orbitalSlots[index % orbitalSlots.size]
             val orbit = side * when (project.light) {
                 TrafficLight.Green -> 0.34f
                 TrafficLight.Yellow -> 0.27f
@@ -291,8 +349,8 @@ private fun OrbitalHud(
                 project = project,
                 modifier = Modifier
                     .offset(
-                        x = (cos(angle).toFloat() * orbit.value).dp,
-                        y = (sin(angle).toFloat() * orbit.value).dp,
+                        x = (slot.x * orbit.value).dp,
+                        y = (slot.y * orbit.value).dp,
                     )
                     .testTag("geek_project_orbit_${project.name}"),
             )
@@ -307,8 +365,9 @@ private fun OrbitalProjectChip(
 ) {
     Row(
         modifier = modifier
-            .widthIn(max = 116.dp)
-            .background(Color.Black.copy(alpha = 0.72f), RoundedCornerShape(50))
+            .widthIn(max = 92.dp)
+            .background(Color.Black.copy(alpha = 0.82f), RoundedCornerShape(50))
+            .border(1.dp, project.light.geekAccent().copy(alpha = 0.22f), RoundedCornerShape(50))
             .padding(horizontal = 7.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -322,7 +381,7 @@ private fun OrbitalProjectChip(
             text = project.name,
             color = GeekColors.Ink,
             fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
+            fontSize = 8.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             letterSpacing = 0.sp,
@@ -414,10 +473,33 @@ private fun DrawScope.drawGeekGrid() {
     }
 }
 
-private fun DrawScope.drawRadarScope(light: TrafficLight) {
+private fun DrawScope.drawScopeFrame(scanner: Float) {
+    val inset = 10.dp.toPx()
+    val corner = 18.dp.toPx()
+    val accent = GeekColors.Blue.copy(alpha = 0.32f + scanner * 0.12f)
+    val len = 34.dp.toPx()
+    drawLine(accent, Offset(inset, inset), Offset(inset + len, inset), 1.4.dp.toPx())
+    drawLine(accent, Offset(inset, inset), Offset(inset, inset + len), 1.4.dp.toPx())
+    drawLine(accent, Offset(size.width - inset, inset), Offset(size.width - inset - len, inset), 1.4.dp.toPx())
+    drawLine(accent, Offset(size.width - inset, inset), Offset(size.width - inset, inset + len), 1.4.dp.toPx())
+    drawLine(accent, Offset(inset, size.height - inset), Offset(inset + len, size.height - inset), 1.4.dp.toPx())
+    drawLine(accent, Offset(inset, size.height - inset), Offset(inset, size.height - inset - len), 1.4.dp.toPx())
+    drawLine(accent, Offset(size.width - inset, size.height - inset), Offset(size.width - inset - len, size.height - inset), 1.4.dp.toPx())
+    drawLine(accent, Offset(size.width - inset, size.height - inset), Offset(size.width - inset, size.height - inset - len), 1.4.dp.toPx())
+    drawRoundRect(
+        color = GeekColors.PanelStroke.copy(alpha = 0.14f),
+        topLeft = Offset(inset, inset),
+        size = Size(size.width - inset * 2f, size.height - inset * 2f),
+        cornerRadius = CornerRadius(corner),
+        style = Stroke(width = 1.dp.toPx()),
+    )
+}
+
+private fun DrawScope.drawRadarScope(light: TrafficLight, scanner: Float) {
     val radius = min(size.width, size.height) * 0.34f
     val center = Offset(size.width * 0.72f, size.height * 0.28f)
     val accent = light.geekAccent()
+    val scanAngle = (scanner * 360f - 90f) * PI.toFloat() / 180f
     drawCircle(
         color = accent.copy(alpha = 0.14f),
         radius = radius,
@@ -431,9 +513,12 @@ private fun DrawScope.drawRadarScope(light: TrafficLight) {
         style = Stroke(width = 1.dp.toPx()),
     )
     drawLine(
-        color = accent.copy(alpha = 0.18f),
+        color = accent.copy(alpha = 0.38f),
         start = center,
-        end = Offset(center.x + radius * 0.78f, center.y - radius * 0.44f),
+        end = Offset(
+            x = center.x + cos(scanAngle).toFloat() * radius,
+            y = center.y + sin(scanAngle).toFloat() * radius,
+        ),
         strokeWidth = 2.dp.toPx(),
     )
 }
@@ -458,8 +543,35 @@ private fun DrawScope.drawSignalBars(projects: List<ProjectTraffic>) {
     }
 }
 
-private fun DrawScope.drawScanLine() {
-    val top = size.height * 0.58f
+private fun DrawScope.drawSignalWave(projects: List<ProjectTraffic>, scanner: Float) {
+    if (projects.isEmpty()) return
+    val baseY = size.height * 0.42f
+    val step = size.width / 14f
+    var previous = Offset(0f, baseY)
+    for (index in 1..14) {
+        val project = projects[(index - 1) % projects.size]
+        val amplitude = when (project.light) {
+            TrafficLight.Green -> 19.dp.toPx()
+            TrafficLight.Yellow -> 12.dp.toPx()
+            TrafficLight.Red -> 7.dp.toPx()
+        }
+        val phase = scanner * PI.toFloat() * 2f
+        val point = Offset(
+            x = index * step,
+            y = baseY + sin(index * 0.9f + phase) * amplitude,
+        )
+        drawLine(
+            color = project.light.geekAccent().copy(alpha = 0.24f),
+            start = previous,
+            end = point,
+            strokeWidth = 1.2.dp.toPx(),
+        )
+        previous = point
+    }
+}
+
+private fun DrawScope.drawScanLine(scanner: Float) {
+    val top = size.height * (0.48f + scanner * 0.34f)
     drawRoundRect(
         color = GeekColors.Blue.copy(alpha = 0.08f),
         topLeft = Offset(0f, top),
@@ -522,6 +634,7 @@ private object GeekColors {
     val Background = Color.Black
     val Panel = Color(0xD90A1014)
     val Row = Color(0xCC080B0E)
+    val PanelStroke = Color(0xFF1E9BC2)
     val Grid = Color(0x14258DAD)
     val Ink = Color(0xFFE8F7FF)
     val Muted = Color(0xFF6E8590)

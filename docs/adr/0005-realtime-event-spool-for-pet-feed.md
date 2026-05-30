@@ -26,7 +26,9 @@ Mac companion 新增本机实时事件 spool：
 - 支持 `running`、`waiting_input`、`permission_required`、`completed`、`failed`、
   `network_stall`、`message`
 - companion 每 2 秒读取最近 15 分钟事件，并优先把事件转为 BLE payload 的 `f/n` 动态行
-- 没有事件时，继续从 SQLite 结构化状态派生动态兜底
+- companion 同时从 SQLite 结构化状态合成动态，覆盖正在推进、近期更新、目标 blocked、
+  agent job stale、Codex 进程不在线等状态
+- payload 空间紧张时，编码器优先保留最多 3 条动态，再裁剪项目列表，避免第二屏只剩项目行
 - `scripts/codex-traffic-event.sh` 作为通用写入入口，可选通过 `CODEX_TRAFFIC_NTFY_TOPIC`
   同步发到 ntfy
 - `scripts/codex-traffic-notify-wrapper.sh` 作为现有 `notify` 的兼容 wrapper，先写事件再转发
@@ -39,6 +41,7 @@ Mac companion 新增本机实时事件 spool：
 - 事件 spool 能表达等待输入、等待授权、完成、失败、网络疑似卡住这些 SQLite 无法可靠推断的状态。
 - 事件 payload 很短，适合现有 480 bytes BLE characteristic，不需要立即设计新传输通道。
 - 本地 JSONL 入口可以被 Codex hook、shell、Hammerspoon、Apprise、ntfy 或自动化系统复用。
+- SQLite 合成动态保证即使没有细粒度 hook，第二屏也能显示本机真实状态，而不是静态占位。
 - 继续不读取 `history.jsonl`、完整会话正文或大日志，隐私边界清晰。
 
 ## 后果
@@ -51,7 +54,8 @@ Mac companion 新增本机实时事件 spool：
 
 取舍：
 
-- v1 仍不能自动覆盖所有 Codex 内部状态；只有 hook 或脚本写入的状态才是实时事件。
+- v1 仍不能自动覆盖所有 Codex 内部状态；hook 或脚本写入的事件优先级最高，SQLite 合成动态
+  是结构化启发式。
 - `notify` 旧接口通常只在 turn end 触发，无法天然覆盖“正在运行”的连续流；这类事件需要更细的 hook 或外部监控脚本写入。
 - spool 是本机追加文件，需要后续按体积做清理或轮转。
 

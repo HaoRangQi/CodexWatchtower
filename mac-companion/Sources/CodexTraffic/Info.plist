@@ -5,12 +5,14 @@
     <key>CFBundleIdentifier</key>
     <string>com.codextraffic.companion</string>
     <key>CFBundleName</key>
-    <string>Codex Traffic</string>
+    <string>Codex Watchtower</string>
     <key>CFBundleExecutable</key>
     <string>codex-traffic</string>
     <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>Codex Traffic uses Bluetooth to broadcast local Codex activity to the Android desktop pet app.</string>
+    <string>Codex Watchtower uses Bluetooth to broadcast local Codex activity to the Android desktop pet app.</string>
     <key>NSBluetoothPeripheralUsageDescription</key>
-    <string>Codex Traffic uses Bluetooth to broadcast local Codex activity to the Android desktop pet app.</string>
+    <string>Codex Watchtower uses Bluetooth to broadcast local Codex activity to the Android desktop pet app.</string>
+    <key>NSBluetoothWhileInUseUsageDescription</key>
+    <string>Codex Watchtower uses Bluetooth to broadcast local Codex activity to the Android desktop pet app.</string>
 </dict>
 </plist>

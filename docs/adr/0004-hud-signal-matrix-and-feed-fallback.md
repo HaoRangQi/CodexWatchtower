@@ -12,7 +12,7 @@
 
 第二屏在真机上曾出现“没有动态”的反馈。排查后确认：Android 主链路已经能收到
 `p/m` 项目状态，源码版 Mac companion 也能生成 `f/n` 动态字段，但正在 BLE 广播的是
-旧的 `dist/Codex Traffic.app` 进程，手机连到旧 payload 时第二屏没有动态数据。
+旧的 `dist/Codex Watchtower.app` 进程（更名前为 `Codex Traffic.app`），手机连到旧 payload 时第二屏没有动态数据。
 
 同时，“极客风格”不是黑底终端或 JSON 文本，而是偏视觉画风：需要像仪表盘、雷达、
 信号面板这类监控感表达。

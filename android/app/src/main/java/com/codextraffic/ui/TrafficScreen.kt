@@ -678,7 +678,7 @@ private fun ConnectionStatus.label(): String = when (this) {
 private fun ConnectionStatus.actionText(): String = when (this) {
     ConnectionStatus.PermissionMissing -> "先授予附近设备/蓝牙权限。"
     ConnectionStatus.BluetoothOff -> "先打开手机蓝牙。"
-    ConnectionStatus.Scanning -> "我正在找 Mac 上的 Codex Traffic。"
+    ConnectionStatus.Scanning -> "我正在找 Mac 上的 Codex Watchtower。"
     ConnectionStatus.Connecting -> "已经找到设备，正在连接。"
     ConnectionStatus.Error -> "连接失败，稍后会自动重试。"
     ConnectionStatus.Disconnected -> "确认 Mac companion 正在运行。"

@@ -2,7 +2,7 @@
 
 ## 系统边界
 
-Codex 桌宠由两个运行时组成：
+Codex 守望台（Codex Watchtower）由两个运行时组成：
 
 - macOS companion：Swift CLI 代码，通过 `.app` bundle 身份运行，作为 BLE Peripheral 广播状态。
 - Android app：Kotlin + Jetpack Compose，作为 BLE Central/GATT Client 扫描、连接、读取状态，并显示高保真桌宠监控界面。
@@ -21,19 +21,20 @@ Mac 端有两个数据来源：
 
 实时事件由 Codex hook、手动脚本或自动化写入，只保存 `cwd`、短标题、短正文和状态码。
 它用于表达 SQLite 无法稳定判断的状态，例如等待用户输入、等待权限、任务完成、失败或
-网络疑似卡住。没有实时事件时，Mac companion 再从 SQLite 结构化状态字段派生项目正在推进、
-近期更新、目标 blocked、任务 stale 或 Codex 进程不在线等兜底动态。
+网络疑似卡住。Mac companion 同时会从 SQLite 结构化状态字段合成项目正在推进、近期更新、
+目标 blocked、任务 stale 或 Codex 进程不在线等动态。这样即使没有细粒度 hook，第二屏也会
+每 2 秒收到来自本机真实状态的短动态。
 
 companion 不读取会话正文、`history.jsonl` 或大日志。状态判断仍是启发式，不等同 Codex
 私有内部运行态，也不是 Codex 原始聊天输出镜像。新 companion 会在 BLE payload 中发送 `f/n`
-动态字段；Android parser 兼容旧 payload，没有 `f/n` 时会从 `p` 项目行派生同语义的动态卡片，
-避免手机端出现空白第二屏。
+动态字段；payload 空间紧张时优先保留最多 3 条动态，再裁剪项目列表。Android parser 兼容旧
+payload，没有 `f/n` 时会从 `p` 项目行派生同语义的动态卡片，避免手机端出现空白第二屏。
 
 ## BLE 契约
 
 BLE 契约以 `PROTOCOL.md` 为准。当前 v1 使用：
 
-- 设备名：`Codex Traffic`
+- 设备名：`Codex Watchtower`
 - Service UUID：`4F4C0001-6C6F-6164-696E-672D636F6465`
 - Status characteristic UUID：`4F4C0002-6C6F-6164-696E-672D636F6465`
 - Characteristic：`read + notify`
@@ -51,7 +52,7 @@ Android 连接后请求 MTU 517；失败时继续使用普通 read。为兼容�
 
 Android UI 不再以红绿灯为主视觉，而是把状态映射到 BSOD 蓝屏桌宠 mood、极简状态短句和项目行标签。Android 优先从本机 `assets/codex_bsod_spritesheet.webp` 读取 Codex app 的 BSOD spritesheet；该专有资源由 `scripts/sync-codex-bsod-asset.sh` 从 `/Applications/Codex.app/Contents/Resources/app.asar` 提取，不提交进仓库。资源缺失时，UI 回退到内置蓝屏白壳绘制版本。项目行仍保留颜色辅助，但核心提示是“推进中 / 刚动过 / 需要看一眼 / 阻塞 / 离线”等中文语义。
 
-屏幕长期摆放时优先省电：Android 背景、面板和项目行使用纯黑，主界面减少标题、方框和长说明，只保留连接角标、桌宠、整体状态短句和项目状态行。桌宠复刻 Codex avatar 原型的 8×9 spritesheet 帧序列，第一屏按状态播放 running / waiting / failed / idle / waving 动作；第二屏 overlay 小桌宠按动态优先级播放 running / waiting / failed / idle，并用动态行呼吸状态点表示数据正在刷新，避免常亮时像静止图片。
+屏幕长期摆放时优先省电：Android 背景、面板和项目行使用纯黑，主界面减少标题、方框和长说明，只保留连接角标、桌宠、整体状态短句和项目状态行。Activity 使用沉浸式全屏、常亮、show-when-locked 和 turn-screen-on，尽量让旧手机像专用状态摆件。桌宠复刻 Codex avatar 原型的 8×9 spritesheet 帧序列，第一屏按状态播放 running / waiting / failed / idle / waving 动作；第二屏 overlay 小桌宠按动态优先级播放 running / waiting / failed / idle，并用动态行呼吸状态点表示数据正在刷新，避免常亮时像静止图片。
 
 ## Android 行为
 
@@ -60,8 +61,8 @@ Android UI 用户可见文案使用中文。连接状态单独显示，不混入
 Android 使用横向分页：
 
 - 第一屏是常亮桌宠监控。
-- 向左滑动进入第二屏宠物动态，展示 Mac companion 生成的结构化项目动态。视觉形态贴近 Codex avatar overlay：固定原型比例内容框、左上浮动通知托盘、右下小桌宠、纯黑背景和轻量网格。
-- 再向左滑动进入第三屏 `项目信号`，展示偏极客画风的 HUD 仪表：雷达环、扫描线、信号柱、项目轨道和中文状态摘要。第三屏不使用终端 JSON 文本作为主界面。
+- 向左滑动进入第二屏宠物动态，展示 Mac companion 生成的结构化项目动态。视觉形态贴近 Codex avatar overlay：固定 356:320 原型比例内容框、左上浮动通知托盘、右下小桌宠、透明舞台和最多 3 条紧凑通知卡；不显示普通列表标题。
+- 再向左滑动进入第三屏 `项目信号`，展示偏极客画风的 HUD 仪表：雷达环、扫描线、信号柱、项目轨道、示波线、角标框和中文状态摘要。第三屏不使用终端 JSON 文本作为主界面。
 
 第一屏由三层组成：
 
@@ -81,7 +82,9 @@ Android 端持有本机隐藏项目列表，存储在 `SharedPreferences`。用�
 
 ## Mac 运行方式
 
-BLE 广播必须通过 `mac-companion/dist/Codex Traffic.app` 启动，因为 macOS 蓝牙隐私权限绑定 app bundle 身份。`swift run codex-traffic --once` 只用于调试 payload，不作为 BLE 常驻运行方式。
+BLE 广播必须通过 `mac-companion/dist/Codex Watchtower.app` 启动，因为 macOS 蓝牙隐私权限绑定 app bundle 身份。`swift run codex-traffic --once` 只用于调试 payload，不作为 BLE 常驻运行方式。
+如果只想验证 HTTP fallback 或 Android 第二屏实时数据链路，可使用
+`swift run codex-traffic --no-ble`，此模式不会触发 CoreBluetooth 初始化。
 companion 默认每 2 秒读取 SQLite 和 `~/.codex-traffic/events.jsonl`。可用
 `scripts/codex-traffic-event.sh` 写入实时事件；如需保留现有 Codex `notify`，使用
 `scripts/codex-traffic-notify-wrapper.sh` 先写事件再转发给原有通知程序。
@@ -103,7 +106,4 @@ source ../scripts/use-android-toolchain.sh
 ./gradlew testDebugUnitTest assembleDebug
 ```
 
-真机验收使用 `ONEPLUS A6013` 无线 ADB 验证过：发现 `Codex Traffic`、GATT connected、发现 characteristic、持续收到 payload，UI 显示中文 `已连接` 和项目状态。
-如果设备进入 secure lock/AOD 状态，`NotificationShade` 会遮住测试 Activity，导致
-`connectedDebugAndroidTest` 报 `No compose hierarchies found in the app`。这种情况下需先
-手动解锁手机，再跑 Compose instrumentation；编译、单测和 BLE payload 日志不受影响。
+真机验收使用 `ONEPLUS A6013` 无线 ADB 验证过：发现 `Codex Watchtower`、GATT connected、发现 characteristic、持续收到 payload，UI 显示中文 `已连接` 和项目状态。第二屏和第三屏截图可通过 `adb exec-out screencap -p` 直接抓取；Activity 会覆盖 keyguard，但 Compose instrumentation 在部分锁屏状态下仍可能被系统限制，这种情况下先手动解锁再跑 `connectedDebugAndroidTest`。

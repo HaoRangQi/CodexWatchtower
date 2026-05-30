@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-APP_DIR="${PROJECT_DIR}/dist/Codex Traffic.app"
+APP_DIR="${PROJECT_DIR}/dist/Codex Watchtower.app"
 CONTENTS_DIR="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 INFO_PLIST="${CONTENTS_DIR}/Info.plist"
@@ -38,7 +38,7 @@ cat > "${INFO_PLIST}" <<'PLIST'
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>Codex Traffic</string>
+    <string>Codex Watchtower</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -48,9 +48,11 @@ cat > "${INFO_PLIST}" <<'PLIST'
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>NSBluetoothAlwaysUsageDescription</key>
-    <string>Codex Traffic uses Bluetooth to broadcast local Codex activity to the Android desktop pet app.</string>
+    <string>Codex Watchtower uses Bluetooth to broadcast local Codex activity to the Android desktop pet app.</string>
     <key>NSBluetoothPeripheralUsageDescription</key>
-    <string>Codex Traffic uses Bluetooth to broadcast local Codex activity to the Android desktop pet app.</string>
+    <string>Codex Watchtower uses Bluetooth to broadcast local Codex activity to the Android desktop pet app.</string>
+    <key>NSBluetoothWhileInUseUsageDescription</key>
+    <string>Codex Watchtower uses Bluetooth to broadcast local Codex activity to the Android desktop pet app.</string>
 </dict>
 </plist>
 PLIST

@@ -11,6 +11,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -135,9 +136,37 @@ class TrafficViewModelTest {
         assertEquals(emptySet<String>(), hiddenStore.savedIds)
     }
 
+    @Test
+    fun hybridRepositoryUsesHttpWhenBleCannotConnect() = runTest {
+        val ble = FakeTrafficRepository()
+        val http = FakeTrafficRepository()
+        val repository = HybridTrafficRepository(ble, http, this)
+        val snapshot = TrafficSnapshot(
+            version = 1,
+            timestampSeconds = 10,
+            overall = TrafficLight.Green,
+            projects = listOf(ProjectTraffic("id", "loading", TrafficLight.Green, 1, ReasonCode.Work)),
+            omittedCount = 0,
+        )
+
+        repository.start()
+        ble.connection.value = ConnectionStatus.PermissionMissing
+        http.connection.value = ConnectionStatus.Connected
+        http.snapshotsFlow.emit(snapshot)
+        advanceUntilIdle()
+
+        assertEquals(ConnectionStatus.Connected, repository.connectionStatus.value)
+        assertEquals(snapshot, repository.snapshots.first())
+        assertEquals(1, ble.startCalls)
+        assertEquals(1, http.startCalls)
+
+        repository.stop()
+        advanceUntilIdle()
+    }
+
     private class FakeTrafficRepository : TrafficRepository {
         val connection = MutableStateFlow(ConnectionStatus.Disconnected)
-        val snapshotsFlow = MutableSharedFlow<TrafficSnapshot>()
+        val snapshotsFlow = MutableSharedFlow<TrafficSnapshot>(replay = 1)
         var startCalls = 0
         var stopCalls = 0
 

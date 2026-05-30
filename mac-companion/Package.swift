@@ -17,7 +17,8 @@ let package = Package(
             name: "CodexTrafficCore",
             linkerSettings: [
                 .linkedLibrary("sqlite3"),
-                .linkedFramework("CoreBluetooth")
+                .linkedFramework("CoreBluetooth"),
+                .linkedFramework("Network")
             ]
         ),
         .executableTarget(
@@ -25,6 +26,7 @@ let package = Package(
             dependencies: ["CodexTrafficCore"],
             exclude: ["Info.plist"],
             linkerSettings: [
+                .linkedFramework("AppKit"),
                 .unsafeFlags([
                     "-Xlinker", "-sectcreate",
                     "-Xlinker", "__TEXT",

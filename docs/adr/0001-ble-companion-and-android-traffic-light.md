@@ -17,7 +17,7 @@
 采用两端架构：
 
 - Mac 端 Swift companion 只读 Codex 本地 SQLite 状态，并作为 BLE Peripheral 广播 compact JSON。
-- Android 端 Kotlin + Jetpack Compose app 作为 BLE Central/GATT Client，扫描 `Codex Traffic`，连接后读取状态并显示中文像素风红绿灯。
+- Android 端 Kotlin + Jetpack Compose app 作为 BLE Central/GATT Client，扫描 `Codex Watchtower`，连接后读取状态并显示中文像素风红绿灯。
 - Mac BLE 常驻运行通过 `.app` bundle 启动，而不是裸 `swift run` 可执行文件。
 - Android 除 notify 外，保留 2 秒一次 characteristic read 轮询兜底。
 

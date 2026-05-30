@@ -4,7 +4,7 @@ import android.os.ParcelUuid
 import java.util.UUID
 
 object BleConstants {
-    const val DEVICE_NAME = "Codex Traffic"
+    const val DEVICE_NAME = "Codex Watchtower"
 
     val SERVICE_UUID: UUID = UUID.fromString("4F4C0001-6C6F-6164-696E-672D636F6465")
     val STATUS_CHARACTERISTIC_UUID: UUID = UUID.fromString("4F4C0002-6C6F-6164-696E-672D636F6465")
@@ -12,4 +12,3 @@ object BleConstants {
 
     val SERVICE_PARCEL_UUID = ParcelUuid(SERVICE_UUID)
 }
-

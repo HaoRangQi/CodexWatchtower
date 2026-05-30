@@ -199,9 +199,27 @@ class TrafficScreenTest {
         composeRule.onNodeWithTag("avatar_overlay_mascot").assertIsDisplayed()
         composeRule.onNodeWithTag("avatar_mascot_state_running").assertIsDisplayed()
         composeRule.onNodeWithTag("feed_pulse_a1b2c3d4").assertIsDisplayed()
-        composeRule.onNodeWithText("最新").assertIsDisplayed()
         composeRule.onNodeWithText("正在推进 loading").assertIsDisplayed()
         composeRule.onNodeWithText("4 秒内有新动作").assertIsDisplayed()
+    }
+
+    @Test
+    fun petFeedShowsConnectionStateWhenNoRealtimeRowsArrived() {
+        composeRule.setContent {
+            TrafficTheme {
+                TrafficPagerScreen(
+                    uiState = TrafficUiState(
+                        connectionStatus = ConnectionStatus.Scanning,
+                        snapshot = TrafficSnapshot.empty,
+                    ),
+                    petMotionEnabled = false,
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("traffic_pager").performTouchInput { swipeLeft() }
+
+        composeRule.onNodeWithText("正在连接 Mac").assertIsDisplayed()
     }
 
     @Test
@@ -243,6 +261,7 @@ class TrafficScreenTest {
         composeRule.onNodeWithTag("geek_status_screen").assertIsDisplayed()
         composeRule.onNodeWithText("项目信号").assertIsDisplayed()
         composeRule.onNodeWithTag("geek_hud_scope").assertIsDisplayed()
+        composeRule.onNodeWithTag("geek_scanner_motion").assertIsDisplayed()
         composeRule.onNodeWithTag("geek_orbital_hud").assertIsDisplayed()
         composeRule.onNodeWithTag("geek_project_orbit_loading").assertIsDisplayed()
         composeRule.onNodeWithTag("geek_signal_loading").assertIsDisplayed()

@@ -10,8 +10,10 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.withInfiniteAnimationFrameMillis
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,6 +29,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -55,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.codextraffic.model.ConnectionStatus
 import com.codextraffic.model.PetFeedItem
 import com.codextraffic.model.ReasonCode
 import com.codextraffic.model.TrafficLight
@@ -79,15 +83,16 @@ fun PetFeedScreen(
         modifier = modifier
             .fillMaxSize()
             .background(OverlayColors.Background)
-            .padding(10.dp)
+            .padding(8.dp)
             .testTag("pet_feed_screen"),
-        contentAlignment = Alignment.TopCenter,
+        contentAlignment = Alignment.Center,
     ) {
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = PrototypeViewportWidth.dp)
                 .aspectRatio(PrototypeViewportWidth / PrototypeViewportHeight)
+                .offset(y = (-48).dp)
                 .testTag("avatar_overlay_content_frame"),
         ) {
             val trayWidth = maxWidth * (276f / PrototypeViewportWidth)
@@ -99,10 +104,11 @@ fun PetFeedScreen(
             val mascotLeft = maxWidth * (244f / PrototypeViewportWidth)
             val mascotTop = maxHeight * (191f / PrototypeViewportHeight)
 
-            OverlayNoise()
+            OverlayStage()
             NotificationTray(
                 feedItems = feedItems,
                 omittedFeedCount = uiState.snapshot.omittedFeedCount,
+                connectionStatus = uiState.connectionStatus,
                 modifier = Modifier
                     .width(trayWidth)
                     .height(trayHeight)
@@ -121,47 +127,18 @@ fun PetFeedScreen(
                     .offset(x = mascotLeft, y = mascotTop)
                     .testTag("avatar_overlay_mascot"),
             )
-            Text(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 2.dp, bottom = 4.dp),
-                text = "‹",
-                color = OverlayColors.Faint,
-                fontSize = 20.sp,
-                letterSpacing = 0.sp,
-            )
         }
     }
 }
 
 @Composable
-private fun OverlayNoise() {
+private fun OverlayStage() {
     Canvas(
         modifier = Modifier
             .fillMaxSize()
             .testTag("avatar_overlay_stage"),
     ) {
-        val gap = 18.dp.toPx()
-        var x = 0f
-        while (x < size.width) {
-            drawLine(
-                color = OverlayColors.Grid,
-                start = Offset(x, 0f),
-                end = Offset(x, size.height),
-                strokeWidth = 0.6f,
-            )
-            x += gap
-        }
-        var y = 0f
-        while (y < size.height) {
-            drawLine(
-                color = OverlayColors.Grid,
-                start = Offset(0f, y),
-                end = Offset(size.width, y),
-                strokeWidth = 0.6f,
-            )
-            y += gap
-        }
+        // Intentionally empty: the source overlay has a transparent stage.
     }
 }
 
@@ -169,45 +146,25 @@ private fun OverlayNoise() {
 private fun NotificationTray(
     feedItems: List<PetFeedItem>,
     omittedFeedCount: Int,
+    connectionStatus: ConnectionStatus,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
-            .shadow(14.dp, RoundedCornerShape(18.dp))
-            .background(OverlayColors.Tray, RoundedCornerShape(18.dp))
-            .padding(vertical = 6.dp),
+            .padding(vertical = 2.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 3.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "最新",
-                color = OverlayColors.Ink,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.sp,
-            )
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = if (feedItems.isEmpty()) "0" else "${feedItems.size}",
-                color = OverlayColors.Muted,
-                fontSize = 10.sp,
-                letterSpacing = 0.sp,
-            )
-        }
-
         if (feedItems.isEmpty()) {
-            EmptyOverlayFeed()
+            EmptyOverlayFeed(connectionStatus = connectionStatus)
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
             ) {
-                items(feedItems, key = { "${it.projectId}_${it.reason.wireValue}_${it.ageSeconds}" }) { item ->
-                    OverlayNotificationRow(item)
+                items(
+                    feedItems.take(3),
+                    key = { "${it.projectId}_${it.reason.wireValue}_${it.ageSeconds}" },
+                ) { item ->
+                    OverlayNotificationRow(item = item)
                 }
                 if (omittedFeedCount > 0) {
                     item {
@@ -226,13 +183,21 @@ private fun NotificationTray(
 }
 
 @Composable
-private fun EmptyOverlayFeed() {
+private fun EmptyOverlayFeed(connectionStatus: ConnectionStatus) {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .wrapContentHeight()
+            .shadow(10.dp, OverlayShapes.NotificationCard)
+            .background(OverlayColors.CardSurface, OverlayShapes.NotificationCard)
+            .border(
+                BorderStroke(1.dp, OverlayColors.CardBorder),
+                OverlayShapes.NotificationCard,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = "暂无动态",
+            text = connectionStatus.emptyFeedLabel(),
             color = OverlayColors.Muted,
             fontSize = 13.sp,
             letterSpacing = 0.sp,
@@ -240,60 +205,88 @@ private fun EmptyOverlayFeed() {
     }
 }
 
+private fun ConnectionStatus.emptyFeedLabel(): String = when (this) {
+    ConnectionStatus.Connected -> "暂无动态"
+    ConnectionStatus.Scanning,
+    ConnectionStatus.Connecting -> "正在连接 Mac"
+    ConnectionStatus.PermissionMissing -> "需要蓝牙权限"
+    ConnectionStatus.BluetoothOff -> "蓝牙未开启"
+    ConnectionStatus.Error -> "连接异常"
+    ConnectionStatus.Disconnected -> "未连接 Mac"
+}
+
 @Composable
 private fun OverlayNotificationRow(item: PetFeedItem) {
-    Column(
+    val isWaiting = item.reason == ReasonCode.Blocked || item.reason == ReasonCode.Stale
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-            .background(OverlayColors.Row, RoundedCornerShape(12.dp))
-            .padding(horizontal = 9.dp, vertical = 6.dp)
+            .shadow(12.dp, OverlayShapes.NotificationCard)
+            .background(OverlayColors.CardSurface, OverlayShapes.NotificationCard)
+            .border(
+                BorderStroke(0.75.dp, if (isWaiting) OverlayColors.WaitingBorder else OverlayColors.CardBorder),
+                OverlayShapes.NotificationCard,
+            )
             .testTag("feed_${item.projectId}"),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, top = 5.dp, end = 34.dp, bottom = 5.dp),
         ) {
-            StatusGlyph(item)
-            Spacer(Modifier.width(7.dp))
             Text(
-                modifier = Modifier.weight(1f),
-                text = item.title,
+                text = item.overlayTitle(),
                 color = OverlayColors.Ink,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 letterSpacing = 0.sp,
             )
+            Spacer(Modifier.height(1.dp))
             Text(
-                text = item.overlayAge(),
-                color = OverlayColors.Faint,
+                text = item.body,
+                color = OverlayColors.Muted,
                 fontSize = 9.sp,
+                lineHeight = 12.sp,
+                maxLines = if (isWaiting) 1 else 2,
+                overflow = TextOverflow.Ellipsis,
                 letterSpacing = 0.sp,
             )
-        }
-        Spacer(Modifier.height(3.dp))
-        Text(
-            text = item.body,
-            color = OverlayColors.Muted,
-            fontSize = 10.sp,
-            lineHeight = 13.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            letterSpacing = 0.sp,
-        )
-        if (item.reason == ReasonCode.Blocked || item.reason == ReasonCode.Stale) {
-            Spacer(Modifier.height(5.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                OverlayAction("查看", OverlayColors.Button)
-                OverlayAction("忽略", OverlayColors.Danger.copy(alpha = 0.18f))
+            if (isWaiting) {
+                Spacer(Modifier.height(5.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    OverlayAction(item.primaryActionLabel(), OverlayColors.PrimaryButton)
+                    OverlayAction("忽略", OverlayColors.SecondaryButton)
+                }
             }
         }
+        StatusGlyph(
+            item = item,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 4.dp, end = 6.dp),
+        )
     }
 }
 
+private fun PetFeedItem.overlayTitle(): String = when (reason) {
+    ReasonCode.Blocked -> title.ifBlank { "等待你处理" }
+    ReasonCode.Stale -> title.ifBlank { "任务可能卡住" }
+    else -> title
+}
+
+private fun PetFeedItem.primaryActionLabel(): String = when (reason) {
+    ReasonCode.Stale -> "查看"
+    ReasonCode.Blocked -> "处理"
+    else -> "打开"
+}
+
 @Composable
-private fun StatusGlyph(item: PetFeedItem) {
+private fun StatusGlyph(
+    item: PetFeedItem,
+    modifier: Modifier = Modifier,
+) {
     val transition = rememberInfiniteTransition(label = "feed_pulse")
     val pulse by transition.animateFloat(
         initialValue = 0.68f,
@@ -305,24 +298,27 @@ private fun StatusGlyph(item: PetFeedItem) {
         label = "feed_pulse_alpha",
     )
     Box(
-        modifier = Modifier
-            .size(17.dp)
+        modifier = modifier
+            .size(22.dp)
             .graphicsLayer {
                 alpha = pulse
                 scaleX = 0.92f + pulse * 0.08f
                 scaleY = 0.92f + pulse * 0.08f
             }
-            .background(item.light.overlayAccent().copy(alpha = 0.16f), CircleShape)
+            .background(Color.Transparent, CircleShape)
             .testTag("feed_pulse_${item.projectId}"),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = item.reason.overlayIcon(),
-            color = item.light.overlayAccent(),
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 0.sp,
-        )
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawCircle(
+                color = item.light.overlayAccent().copy(alpha = 0.14f),
+                radius = size.minDimension * 0.48f,
+            )
+            drawCircle(
+                color = item.light.overlayAccent(),
+                radius = size.minDimension * 0.22f,
+            )
+        }
     }
 }
 
@@ -334,10 +330,11 @@ private fun OverlayAction(
     Text(
         text = text,
         color = OverlayColors.Ink,
-        fontSize = 10.sp,
+        fontSize = 11.sp,
         modifier = Modifier
-            .background(color, RoundedCornerShape(7.dp))
-            .padding(horizontal = 9.dp, vertical = 4.dp),
+            .background(color, RoundedCornerShape(50))
+            .border(BorderStroke(1.dp, OverlayColors.ActionBorder), RoundedCornerShape(50))
+            .padding(horizontal = 9.dp, vertical = 3.dp),
         letterSpacing = 0.sp,
     )
 }
@@ -361,9 +358,10 @@ private fun FloatingMascot(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset { IntOffset(x = (-2).dp.roundToPx(), y = 2.dp.roundToPx()) }
-                    .background(state.accent, CircleShape)
-                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                    .offset { IntOffset(x = (-1).dp.roundToPx(), y = 4.dp.roundToPx()) }
+                    .background(OverlayColors.Badge, CircleShape)
+                    .border(BorderStroke(1.dp, OverlayColors.BadgeBorder), CircleShape)
+                    .padding(horizontal = 7.dp, vertical = 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -405,10 +403,10 @@ private fun OverlayMascot(
                 (frame.column + 1) * OverlayFrameWidth,
                 (frame.row + 1) * OverlayFrameHeight,
             )
-            val width = size.width * 0.82f
+            val width = size.width
             val height = width * OverlayFrameHeight / OverlayFrameWidth
-            val left = size.width - width
-            val top = (size.height - height) * 0.54f
+            val left = (size.width - width) / 2f
+            val top = (size.height - height) / 2f
             drawContext.canvas.nativeCanvas.drawBitmap(
                 spritesheet,
                 source,
@@ -486,21 +484,6 @@ private fun PetFeedItem.overlayPriority(): Int = when (reason) {
     ReasonCode.Idle -> 3
 }
 
-private fun PetFeedItem.overlayAge(): String = when {
-    ageSeconds < 60 -> "${ageSeconds} 秒"
-    ageSeconds < 3600 -> "${ageSeconds / 60} 分"
-    else -> "${ageSeconds / 3600} 时"
-}
-
-private fun ReasonCode.overlayIcon(): String = when (this) {
-    ReasonCode.Work -> "●"
-    ReasonCode.Recent -> "◐"
-    ReasonCode.Idle -> "·"
-    ReasonCode.Stale -> "!"
-    ReasonCode.Blocked -> "?"
-    ReasonCode.CodexOff -> "×"
-}
-
 private fun ReasonCode.overlayPulseMillis(): Int = when (this) {
     ReasonCode.Work -> 680
     ReasonCode.Recent -> 980
@@ -514,12 +497,12 @@ private fun List<PetFeedItem>.overlayMascotState(overall: TrafficLight): Overlay
     val topReason = minByOrNull { it.overlayPriority() }?.reason
     return when {
         topReason == ReasonCode.Work -> OverlayAvatarState.Running
-        topReason == ReasonCode.Recent -> OverlayAvatarState.Waiting
+        topReason == ReasonCode.Recent -> OverlayAvatarState.Review
         topReason == ReasonCode.Stale || topReason == ReasonCode.Blocked || topReason == ReasonCode.CodexOff -> {
             OverlayAvatarState.Failed
         }
         overall == TrafficLight.Green -> OverlayAvatarState.Running
-        overall == TrafficLight.Yellow -> OverlayAvatarState.Waiting
+        overall == TrafficLight.Yellow -> OverlayAvatarState.Review
         else -> OverlayAvatarState.Idle
     }
 }
@@ -537,6 +520,7 @@ private enum class OverlayAvatarState(
 ) {
     Idle("idle", OverlayColors.Muted, OverlayAvatarAnimations.Idle),
     Running("running", OverlayColors.Green, OverlayAvatarAnimations.Running),
+    Review("review", OverlayColors.Green, OverlayAvatarAnimations.Review),
     Waiting("waiting", OverlayColors.Yellow, OverlayAvatarAnimations.Waiting),
     Failed("failed", OverlayColors.Danger, OverlayAvatarAnimations.Failed),
 }
@@ -591,6 +575,7 @@ private object OverlayAvatarAnimations {
 
     val Idle = OverlaySpriteAnimation(frames = idleBase, loopStartIndex = 0)
     val Running = action(row = 7, count = 6, durationMs = 120, lastDurationMs = 220)
+    val Review = action(row = 8, count = 6, durationMs = 150, lastDurationMs = 280)
     val Waiting = action(row = 6, count = 6, durationMs = 150, lastDurationMs = 260)
     val Failed = action(row = 5, count = 8, durationMs = 140, lastDurationMs = 240)
 
@@ -617,14 +602,22 @@ private object OverlayAvatarAnimations {
 
 private object OverlayColors {
     val Background = Color.Black
-    val Grid = Color(0x111B5C7A)
-    val Tray = Color(0xF20B0D10)
-    val Row = Color(0xFF15171B)
-    val Ink = Color(0xFFEAE7DE)
-    val Muted = Color(0xFF9A9A9A)
-    val Faint = Color(0xFF5C5C5C)
-    val Button = Color(0x222F81F7)
+    val CardSurface = Color(0xF21E1F22)
+    val CardBorder = Color(0x52D7D2C7)
+    val WaitingBorder = Color(0x6EF7D36C)
+    val Ink = Color(0xFFF0EEE6)
+    val Muted = Color(0xFFA7A39A)
+    val Faint = Color(0xFF6B6761)
+    val PrimaryButton = Color(0x333D8BFF)
+    val SecondaryButton = Color(0x1CF0EEE6)
+    val ActionBorder = Color(0x38F7F3EA)
+    val Badge = Color(0xFFF8F4EC)
+    val BadgeBorder = Color(0xB0000000)
     val Green = Color(0xFF37D67A)
     val Yellow = Color(0xFFE9C846)
     val Danger = Color(0xFFE34A4A)
+}
+
+private object OverlayShapes {
+    val NotificationCard = RoundedCornerShape(18.dp)
 }

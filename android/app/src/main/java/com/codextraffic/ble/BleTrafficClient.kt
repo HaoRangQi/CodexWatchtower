@@ -176,7 +176,7 @@ class BleTrafficClient(private val context: Context) {
                 return
             }
 
-            Log.d(TAG, "Found Codex Traffic BLE peripheral")
+            Log.d(TAG, "Found Codex Watchtower BLE peripheral")
             _connectionStatus.value = ConnectionStatus.Connecting
             scanHandler.removeCallbacksAndMessages(null)
             scanner?.stopScan(this)

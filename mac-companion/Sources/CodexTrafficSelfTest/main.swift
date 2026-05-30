@@ -16,10 +16,14 @@ struct CodexTrafficSelfTest {
         try testEncodesPetFeedContract()
         try testTruncatesProjectsToFitByteBudgetAndReportsMoreCount()
         try testTruncatesFeedToFitByteBudgetAndReportsMoreCount()
+        try testPayloadPreservesRealtimeFeedBeforeProjectOverflow()
+        try testSynthesizesRealtimeFeedFromSnapshot()
+        try testSynthesizedBlockedGoalNeedsUserAttention()
         try testLoadsRealtimeEventsFromJSONL()
         try testRealtimePermissionEventOverridesDerivedWorkStatus()
         try testRealtimeAttentionEventOverridesOverallGreen()
         try testRealtimeWaitingInputNeedsAttention()
+        try testHTTPStatusServerReturnsCurrentPayload()
         try testLoadsSnapshotFromSQLiteStores()
         print("codex-traffic-selftest: all checks passed")
     }
@@ -292,6 +296,109 @@ struct CodexTrafficSelfTest {
         try expect(moreFeedCount == feedItems.count - encodedFeed.count, "truncated feed more count")
     }
 
+    private static func testPayloadPreservesRealtimeFeedBeforeProjectOverflow() throws {
+        let projects = (0..<8).map { index in
+            ProjectStatus(
+                id: String(format: "%08x", index),
+                name: "project-\(index)-with-long-name",
+                light: index == 0 ? .green : .yellow,
+                ageSeconds: index,
+                reason: index == 0 ? .work : .recent
+            )
+        }
+        let feedItems = (0..<4).map { index in
+            PetFeedItem(
+                projectID: String(format: "%08x", index),
+                title: "动态 \(index)",
+                body: "实时信号",
+                light: index == 0 ? .green : .yellow,
+                ageSeconds: index,
+                reason: index == 0 ? .work : .recent
+            )
+        }
+        let status = TrafficStatus(
+            version: 1,
+            timestamp: Date(timeIntervalSince1970: 1_780_039_000),
+            overall: .green,
+            projects: projects,
+            moreCount: 0,
+            feedItems: feedItems,
+            moreFeedCount: 0
+        )
+
+        let data = try PayloadEncoder(maxBytes: 360).encode(status)
+        guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let encodedProjects = object["p"] as? [[Any]],
+              let encodedFeed = object["f"] as? [[Any]],
+              let moreCount = object["m"] as? Int,
+              let moreFeedCount = object["n"] as? Int else {
+            throw SelfTestError.failed("feed priority payload shape")
+        }
+
+        try expect(data.count <= 360, "feed priority max bytes")
+        try expect(encodedFeed.count >= 3, "feed priority preserves live rows")
+        try expect(encodedProjects.count < projects.count, "feed priority trims projects first")
+        try expect(moreCount == projects.count - encodedProjects.count, "feed priority project more count")
+        try expect(moreFeedCount == feedItems.count - encodedFeed.count, "feed priority more count")
+    }
+
+    private static func testSynthesizesRealtimeFeedFromSnapshot() throws {
+        let now = Date(timeIntervalSince1970: 1_780_039_000)
+        let snapshot = CodexSnapshot(
+            threads: [
+                CodexThread(id: "thread-1", cwd: "/tmp/loading", updatedAt: now.addingTimeInterval(-4))
+            ],
+            jobs: [
+                CodexAgentJob(
+                    threadId: "thread-1",
+                    cwd: "/tmp/loading",
+                    status: "running",
+                    startedAt: now.addingTimeInterval(-20),
+                    updatedAt: now.addingTimeInterval(-3),
+                    maxRuntimeSeconds: 300
+                )
+            ],
+            goals: [],
+            codexProcessRunning: true
+        )
+
+        let events = SnapshotFeedSynthesizer().synthesize(snapshot: snapshot, now: now)
+
+        try expect(events.count == 1, "synthesized running event is deduplicated")
+        try expect(events.first.map {
+            $0.kind == .running
+                && $0.cwd == "/tmp/loading"
+                && $0.title == "正在推进 loading"
+                && ($0.body.contains("结构化状态更新") || $0.body == "检测到运行中的 agent job")
+        } == true, "synthesized running event")
+    }
+
+    private static func testSynthesizedBlockedGoalNeedsUserAttention() throws {
+        let now = Date(timeIntervalSince1970: 1_780_039_000)
+        let snapshot = CodexSnapshot(
+            threads: [
+                CodexThread(id: "thread-1", cwd: "/tmp/loading", updatedAt: now.addingTimeInterval(-12))
+            ],
+            jobs: [],
+            goals: [
+                CodexGoal(threadId: "thread-1", status: "blocked")
+            ],
+            codexProcessRunning: true
+        )
+
+        let events = SnapshotFeedSynthesizer().synthesize(snapshot: snapshot, now: now)
+
+        try expect(events == [
+            CodexRealtimeEvent(
+                timestamp: now.addingTimeInterval(-12),
+                cwd: "/tmp/loading",
+                kind: .waitingInput,
+                title: "等待你处理",
+                body: "loading 当前目标被标记为 blocked"
+            )
+        ], "synthesized blocked event")
+    }
+
     private static func testLoadsRealtimeEventsFromJSONL() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -407,6 +514,19 @@ struct CodexTrafficSelfTest {
         try expect(result.overall == .red, "waiting input overall")
         try expect(result.projects.first?.reason == .blocked, "waiting input reason")
         try expect(result.feedItems.first?.title == "等待你回复", "waiting input feed title")
+    }
+
+    private static func testHTTPStatusServerReturnsCurrentPayload() throws {
+        let payload = Data(#"{"v":1,"t":1780039000,"o":"g","p":[],"m":0}"#.utf8)
+        let server = HTTPStatusServer(port: 18765) { payload }
+        try server.start()
+        defer { server.stop() }
+
+        Thread.sleep(forTimeInterval: 0.2)
+        let url = URL(string: "http://127.0.0.1:18765/status")!
+        let data = try Data(contentsOf: url)
+
+        try expect(data == payload, "http server payload")
     }
 
     private static func testLoadsSnapshotFromSQLiteStores() throws {
