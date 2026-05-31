@@ -2,6 +2,9 @@
 
 ## 2026-05-31
 
+- 修复 payload 裁剪策略，避免第二屏动态挤掉全部项目行，恢复第一屏与第三屏项目刷新。
+- 补充普通用户安装说明，明确 Mac companion 与 Android App 都是必需发布产物。
+- 准备 GitHub Release 下载路径与发布包命名：`CodexWatchtower-macOS.zip`、`CodexWatchtower.apk`。
 - 更新三屏预览截图，同步 `pics/` 与 `docs/images/`。
 - 同步 `PROTOCOL.md`、`docs/RUNBOOK.md`、`docs/current/ARCHITECTURE.md`，记录第二屏优先读取 Codex thread 气泡与 `rollout_path` 最近事件。
 - 新增 `docs/adr/0006-thread-bubble-feed-source.md`，记录 thread 气泡数据源决策。

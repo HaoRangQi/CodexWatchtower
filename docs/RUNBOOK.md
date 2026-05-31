@@ -1,5 +1,23 @@
 # 运行与调试手册
 
+## 给普通用户的安装包
+
+发布版不要求用户从源码安装。GitHub Release 应包含两个文件：
+
+```text
+CodexWatchtower-macOS.zip
+CodexWatchtower.apk
+```
+
+用户流程：
+
+1. Mac 下载并解压 `CodexWatchtower-macOS.zip`，打开 `Codex Watchtower.app`，允许蓝牙权限。
+2. Android 下载并安装 `CodexWatchtower.apk`，允许“附近设备/蓝牙”权限。
+3. 手机打开 `Codex 守望台`，确认右上角显示 `已连接`。
+4. 第一屏显示项目列表，左滑第二屏看 Codex 动态，再左滑第三屏看项目信号 HUD。
+
+Mac companion 是必须运行的；Android App 只负责展示，不能单独读取 Mac 上的 Codex 状态。
+
 ## 工具链准备
 
 本仓库默认使用共享 Android 命令行工具链：
@@ -105,6 +123,16 @@ cd android
 ```text
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
+
+Release APK 路径：
+
+```text
+android/app/build/outputs/apk/release/app-release.apk
+```
+
+当前 v1 使用未上架 APK 分发，Android 安装时需要允许未知来源。发布产物会重命名为 `CodexWatchtower.apk`。
+为保证 GitHub 下载后能直接安装，release 构建暂用 Android debug signing config；这不是 Play Store
+生产签名，后续上架或长期分发前需要替换为正式 release keystore。
 
 ## 手动验收清单
 

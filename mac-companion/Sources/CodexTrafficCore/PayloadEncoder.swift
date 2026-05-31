@@ -3,10 +3,12 @@ import Foundation
 public struct PayloadEncoder: Sendable {
     public let maxBytes: Int
     public let minimumFeedRows: Int
+    public let minimumProjectRows: Int
 
-    public init(maxBytes: Int = 480, minimumFeedRows: Int = 3) {
+    public init(maxBytes: Int = 480, minimumFeedRows: Int = 2, minimumProjectRows: Int = 3) {
         self.maxBytes = maxBytes
         self.minimumFeedRows = minimumFeedRows
+        self.minimumProjectRows = minimumProjectRows
     }
 
     public func encode(_ status: TrafficStatus) throws -> Data {
@@ -26,12 +28,17 @@ public struct PayloadEncoder: Sendable {
             if data.count <= maxBytes {
                 return data
             }
+            if projectRows.count < min(minimumProjectRows, status.projects.count), !feedRows.isEmpty {
+                feedRows.removeLast()
+                moreFeedCount = status.moreFeedCount + status.feedItems.count - feedRows.count
+                continue
+            }
             if feedRows.count > minimumFeedRows {
                 feedRows.removeLast()
                 moreFeedCount = status.moreFeedCount + status.feedItems.count - feedRows.count
                 continue
             }
-            if !projectRows.isEmpty {
+            if projectRows.count > min(minimumProjectRows, status.projects.count) {
                 projectRows.removeLast()
                 moreCount = status.moreCount + status.projects.count - projectRows.count
                 continue
@@ -39,6 +46,11 @@ public struct PayloadEncoder: Sendable {
             if !feedRows.isEmpty {
                 feedRows.removeLast()
                 moreFeedCount = status.moreFeedCount + status.feedItems.count - feedRows.count
+                continue
+            }
+            if !projectRows.isEmpty {
+                projectRows.removeLast()
+                moreCount = status.moreCount + status.projects.count - projectRows.count
                 continue
             }
             throw PayloadEncodingError.payloadCannotFit(maxBytes: maxBytes)
@@ -77,7 +89,7 @@ public struct PayloadEncoder: Sendable {
     private func row(_ project: ProjectStatus) -> [Any] {
         [
             project.id,
-            project.name,
+            clipped(project.name, limit: 24),
             project.light.rawValue,
             project.ageSeconds,
             project.reason.rawValue
@@ -87,12 +99,19 @@ public struct PayloadEncoder: Sendable {
     private func row(_ item: PetFeedItem) -> [Any] {
         [
             item.projectID,
-            item.title,
-            item.body,
+            clipped(item.title, limit: 30),
+            clipped(item.body, limit: 26),
             item.light.rawValue,
             item.ageSeconds,
             item.reason.rawValue
         ]
+    }
+
+    private func clipped(_ value: String, limit: Int) -> String {
+        guard value.count > limit else {
+            return value
+        }
+        return String(value.prefix(max(1, limit - 1))) + "…"
     }
 
     private func jsonValue(_ value: Any) throws -> String {

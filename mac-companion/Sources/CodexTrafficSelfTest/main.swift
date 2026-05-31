@@ -17,6 +17,7 @@ struct CodexTrafficSelfTest {
         try testTruncatesProjectsToFitByteBudgetAndReportsMoreCount()
         try testTruncatesFeedToFitByteBudgetAndReportsMoreCount()
         try testPayloadPreservesRealtimeFeedBeforeProjectOverflow()
+        try testPayloadPreservesProjectsWhenFeedIsLarge()
         try testSynthesizesFeedFromThreadBubble()
         try testThreadFeedFallsBackToThreadPreview()
         try testSynthesizesRealtimeFeedFromSnapshot()
@@ -338,10 +339,56 @@ struct CodexTrafficSelfTest {
         }
 
         try expect(data.count <= 360, "feed priority max bytes")
-        try expect(encodedFeed.count >= 3, "feed priority preserves live rows")
+        try expect(encodedFeed.count >= 2, "feed priority preserves live rows")
         try expect(encodedProjects.count < projects.count, "feed priority trims projects first")
         try expect(moreCount == projects.count - encodedProjects.count, "feed priority project more count")
         try expect(moreFeedCount == feedItems.count - encodedFeed.count, "feed priority more count")
+    }
+
+    private static func testPayloadPreservesProjectsWhenFeedIsLarge() throws {
+        let projects = (0..<6).map { index in
+            ProjectStatus(
+                id: String(format: "%08x", index),
+                name: "project-\(index)-with-long-name",
+                light: index == 0 ? .green : .yellow,
+                ageSeconds: index,
+                reason: index == 0 ? .work : .recent
+            )
+        }
+        let feedItems = (0..<6).map { index in
+            PetFeedItem(
+                projectID: String(format: "%08x", index),
+                title: "这是一条非常长的 Codex thread 气泡标题 \(index)，用于模拟真实输出挤占 BLE payload",
+                body: "这是一条非常长的 Codex 输出正文 \(index)，用于模拟第二屏真实动态",
+                light: .yellow,
+                ageSeconds: index,
+                reason: .recent
+            )
+        }
+        let status = TrafficStatus(
+            version: 1,
+            timestamp: Date(timeIntervalSince1970: 1_780_039_000),
+            overall: .yellow,
+            projects: projects,
+            moreCount: 0,
+            feedItems: feedItems,
+            moreFeedCount: 0
+        )
+
+        let data = try PayloadEncoder(maxBytes: 480).encode(status)
+        guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let encodedProjects = object["p"] as? [[Any]],
+              let encodedFeed = object["f"] as? [[Any]],
+              let moreCount = object["m"] as? Int,
+              let moreFeedCount = object["n"] as? Int else {
+            throw SelfTestError.failed("project preserving payload shape")
+        }
+
+        try expect(data.count <= 480, "project preserving max bytes")
+        try expect(encodedProjects.count >= 3, "payload keeps first and third screen populated")
+        try expect(encodedFeed.count >= 1, "payload keeps realtime feed populated")
+        try expect(moreCount == projects.count - encodedProjects.count, "project preserving more count")
+        try expect(moreFeedCount == feedItems.count - encodedFeed.count, "project preserving feed more count")
     }
 
     private static func testSynthesizesFeedFromThreadBubble() throws {

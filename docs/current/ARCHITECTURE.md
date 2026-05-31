@@ -35,8 +35,11 @@ Mac 端有两个数据来源：
 截图 OCR，也不读取隐藏思维。companion 不读取 `history.jsonl` 或大日志；rollout 只尾读一小段，
 用于生成短标题和短正文。状态判断仍是启发式，不等同 Codex 私有内部运行态，也不是完整聊天镜像。
 新 companion 会在 BLE payload 中发送 `f/n` 动态字段；payload 空间紧张时优先保留最多 3 条动态，
-再裁剪项目列表。Android parser 兼容旧 payload，没有 `f/n` 时会从 `p` 项目行派生同语义的动态卡片，
-避免手机端出现空白第二屏。
+并尽量保留至少 3 条项目行，再继续裁剪动态或项目。Android parser 兼容旧 payload，没有 `f/n` 时会从
+`p` 项目行派生同语义的动态卡片，避免手机端出现空白第二屏，也避免第一屏和第三屏没有项目数据。
+
+普通用户需要安装两个发布产物：Mac companion `.app` 和 Android `.apk`。Mac companion 是数据源，
+Android App 是显示端；Android 单独安装无法读取 Mac 上的 Codex 本地状态。
 
 ## BLE 契约
 

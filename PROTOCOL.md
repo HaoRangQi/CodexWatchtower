@@ -33,8 +33,9 @@
 then Codex App thread bubble data from `threads.title` / `threads.preview` /
 `threads.rollout_path`, then companion-synthesized rows from Codex SQLite
 snapshots. When the 480-byte budget is tight, the encoder keeps up to 3 feed
-rows before trimming project rows so the second screen still has live content.
-It does not carry hidden reasoning, `history.jsonl`, or large logs.
+rows and at least 3 project rows when possible, so the second screen has live
+content while the first and third screens still have project data. It does not
+carry hidden reasoning, `history.jsonl`, or large logs.
 
 ## Realtime Event Spool
 
