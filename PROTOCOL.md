@@ -30,10 +30,11 @@
 | `n` | Number of omitted pet feed rows after truncation. |
 
 `f` prefers explicit realtime event rows from `~/.codex-traffic/events.jsonl`,
-then companion-synthesized rows from Codex SQLite snapshots. When the 480-byte
-budget is tight, the encoder keeps up to 3 feed rows before trimming project
-rows so the second screen still has live content. It does not carry full
-conversation text, `history.jsonl`, or large logs.
+then Codex App thread bubble data from `threads.title` / `threads.preview` /
+`threads.rollout_path`, then companion-synthesized rows from Codex SQLite
+snapshots. When the 480-byte budget is tight, the encoder keeps up to 3 feed
+rows before trimming project rows so the second screen still has live content.
+It does not carry hidden reasoning, `history.jsonl`, or large logs.
 
 ## Realtime Event Spool
 

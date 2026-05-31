@@ -14,7 +14,12 @@ Android 工具链是共享本机依赖，放在 `/Users/macos/Downloads/AndroidT
 Mac 端有两个数据来源：
 
 1. 实时事件 spool：`~/.codex-traffic/events.jsonl`
-2. Codex 本地 SQLite 状态：
+2. Codex App thread 气泡记录：
+
+- `~/.codex/state_5.sqlite` 的 `threads.title`、`threads.preview`、`threads.rollout_path`
+- `rollout_path` 指向的 thread JSONL，用于读取最近 user/agent/tool 事件
+
+3. Codex 本地 SQLite 状态：
 
 - `~/.codex/state_5.sqlite`
 - `~/.codex/goals_1.sqlite`
@@ -25,10 +30,13 @@ Mac 端有两个数据来源：
 目标 blocked、任务 stale 或 Codex 进程不在线等动态。这样即使没有细粒度 hook，第二屏也会
 每 2 秒收到来自本机真实状态的短动态。
 
-companion 不读取会话正文、`history.jsonl` 或大日志。状态判断仍是启发式，不等同 Codex
-私有内部运行态，也不是 Codex 原始聊天输出镜像。新 companion 会在 BLE payload 中发送 `f/n`
-动态字段；payload 空间紧张时优先保留最多 3 条动态，再裁剪项目列表。Android parser 兼容旧
-payload，没有 `f/n` 时会从 `p` 项目行派生同语义的动态卡片，避免手机端出现空白第二屏。
+第二屏动态优先使用 Codex App 暴露的 thread 气泡数据：先读 `threads` 的 title/preview/cwd，
+再从 `rollout_path` JSONL 解析最近 user、agent、tool、patch 和 task complete 事件。它不是
+截图 OCR，也不读取隐藏思维。companion 不读取 `history.jsonl` 或大日志；rollout 只尾读一小段，
+用于生成短标题和短正文。状态判断仍是启发式，不等同 Codex 私有内部运行态，也不是完整聊天镜像。
+新 companion 会在 BLE payload 中发送 `f/n` 动态字段；payload 空间紧张时优先保留最多 3 条动态，
+再裁剪项目列表。Android parser 兼容旧 payload，没有 `f/n` 时会从 `p` 项目行派生同语义的动态卡片，
+避免手机端出现空白第二屏。
 
 ## BLE 契约
 

@@ -1,5 +1,13 @@
 # 文档变更记录
 
+## 2026-05-31
+
+- 更新三屏预览截图，同步 `pics/` 与 `docs/images/`。
+- 同步 `PROTOCOL.md`、`docs/RUNBOOK.md`、`docs/current/ARCHITECTURE.md`，记录第二屏优先读取 Codex thread 气泡与 `rollout_path` 最近事件。
+- 新增 `docs/adr/0006-thread-bubble-feed-source.md`，记录 thread 气泡数据源决策。
+- 更新 ADR 索引，补充第二屏真实数据源记录。
+- 记录第二屏大气泡、机器人尺寸微调与极简 Android launcher 图标更新。
+
 ## 2026-05-30
 
 - 项目统一更名为 `Codex 守望台 / Codex Watchtower`，同步更新 Android app 名称、BLE 设备名、Mac companion bundle 名称与主文档。

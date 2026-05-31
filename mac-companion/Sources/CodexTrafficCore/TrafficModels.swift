@@ -19,11 +19,24 @@ public struct CodexThread: Equatable, Sendable {
     public let id: String
     public let cwd: String
     public let updatedAt: Date
+    public let title: String
+    public let preview: String
+    public let rolloutPath: String
 
-    public init(id: String, cwd: String, updatedAt: Date) {
+    public init(
+        id: String,
+        cwd: String,
+        updatedAt: Date,
+        title: String = "",
+        preview: String = "",
+        rolloutPath: String = ""
+    ) {
         self.id = id
         self.cwd = cwd
         self.updatedAt = updatedAt
+        self.title = title
+        self.preview = preview
+        self.rolloutPath = rolloutPath
     }
 }
 

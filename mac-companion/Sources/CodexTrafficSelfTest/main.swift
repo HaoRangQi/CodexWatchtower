@@ -17,6 +17,8 @@ struct CodexTrafficSelfTest {
         try testTruncatesProjectsToFitByteBudgetAndReportsMoreCount()
         try testTruncatesFeedToFitByteBudgetAndReportsMoreCount()
         try testPayloadPreservesRealtimeFeedBeforeProjectOverflow()
+        try testSynthesizesFeedFromThreadBubble()
+        try testThreadFeedFallsBackToThreadPreview()
         try testSynthesizesRealtimeFeedFromSnapshot()
         try testSynthesizedBlockedGoalNeedsUserAttention()
         try testLoadsRealtimeEventsFromJSONL()
@@ -342,6 +344,83 @@ struct CodexTrafficSelfTest {
         try expect(moreFeedCount == feedItems.count - encodedFeed.count, "feed priority more count")
     }
 
+    private static func testSynthesizesFeedFromThreadBubble() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let rolloutURL = root.appendingPathComponent("rollout.jsonl")
+        let rollout = """
+        {"timestamp":"2026-05-31T14:00:00.000Z","type":"event_msg","payload":{"type":"user_message","message":"修复第二屏真实数据"}}
+        {"timestamp":"2026-05-31T14:00:03.000Z","type":"event_msg","payload":{"type":"agent_message","message":"我会接入 thread 气泡数据源","phase":"commentary"}}
+
+        """
+        try rollout.write(to: rolloutURL, atomically: true, encoding: .utf8)
+
+        let snapshot = CodexSnapshot(
+            threads: [
+                CodexThread(
+                    id: "thread-1",
+                    cwd: "/tmp/loading",
+                    updatedAt: Date(timeIntervalSince1970: 1_780_039_000),
+                    title: "旧标题",
+                    preview: "旧摘要",
+                    rolloutPath: rolloutURL.path
+                )
+            ],
+            jobs: [],
+            goals: [],
+            codexProcessRunning: true
+        )
+
+        let events = ThreadFeedSynthesizer().synthesize(
+            snapshot: snapshot,
+            now: Date(timeIntervalSince1970: 1_780_039_004)
+        )
+
+        try expect(events == [
+            CodexRealtimeEvent(
+                timestamp: Date(timeIntervalSince1970: 1_780_236_003),
+                cwd: "/tmp/loading",
+                kind: .message,
+                title: "我会接入 thread 气泡数据源",
+                body: "Codex 输出"
+            )
+        ], "thread bubble feed uses rollout agent message")
+    }
+
+    private static func testThreadFeedFallsBackToThreadPreview() throws {
+        let now = Date(timeIntervalSince1970: 1_780_039_000)
+        let snapshot = CodexSnapshot(
+            threads: [
+                CodexThread(
+                    id: "thread-1",
+                    cwd: "/tmp/loading",
+                    updatedAt: now.addingTimeInterval(-12),
+                    title: "首页气泡标题",
+                    preview: "首页气泡摘要",
+                    rolloutPath: "/tmp/missing-rollout.jsonl"
+                )
+            ],
+            jobs: [],
+            goals: [],
+            codexProcessRunning: true
+        )
+
+        let events = ThreadFeedSynthesizer().synthesize(snapshot: snapshot, now: now)
+
+        try expect(events == [
+            CodexRealtimeEvent(
+                timestamp: now.addingTimeInterval(-12),
+                cwd: "/tmp/loading",
+                kind: .running,
+                title: "首页气泡摘要",
+                body: "首页气泡摘要"
+            )
+        ], "thread bubble feed falls back to preview")
+    }
+
     private static func testSynthesizesRealtimeFeedFromSnapshot() throws {
         let now = Date(timeIntervalSince1970: 1_780_039_000)
         let snapshot = CodexSnapshot(
@@ -553,7 +632,10 @@ struct CodexTrafficSelfTest {
             CodexThread(
                 id: "thread-1",
                 cwd: "/tmp/loading",
-                updatedAt: Date(timeIntervalSince1970: 1_780_038_996)
+                updatedAt: Date(timeIntervalSince1970: 1_780_038_996),
+                title: "修复第二屏",
+                preview: "真实气泡摘要",
+                rolloutPath: "/tmp/rollout.jsonl"
             )
         ], "snapshot threads")
         try expect(snapshot.jobs == [
@@ -580,7 +662,10 @@ struct CodexTrafficSelfTest {
         CREATE TABLE threads (
             id TEXT PRIMARY KEY,
             cwd TEXT NOT NULL,
-            updated_at INTEGER NOT NULL
+            updated_at INTEGER NOT NULL,
+            title TEXT NOT NULL DEFAULT '',
+            preview TEXT NOT NULL DEFAULT '',
+            rollout_path TEXT NOT NULL DEFAULT ''
         );
         CREATE TABLE agent_jobs (
             id TEXT PRIMARY KEY,
@@ -595,7 +680,7 @@ struct CodexTrafficSelfTest {
             id TEXT PRIMARY KEY,
             job_id TEXT NOT NULL
         );
-        INSERT INTO threads VALUES ('thread-1', '/tmp/loading', 1780038996);
+        INSERT INTO threads VALUES ('thread-1', '/tmp/loading', 1780038996, '修复第二屏', '真实气泡摘要', '/tmp/rollout.jsonl');
         INSERT INTO agent_jobs VALUES ('job-1', 'thread-1', '/tmp/loading', 'running', 1780038000, 1780038990, 1200);
         INSERT INTO agent_job_items VALUES ('item-1', 'job-1');
         """)

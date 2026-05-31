@@ -193,7 +193,6 @@ class TrafficScreenTest {
         composeRule.onNodeWithTag("traffic_pager").performTouchInput { swipeLeft() }
 
         composeRule.onNodeWithTag("pet_feed_screen").assertIsDisplayed()
-        composeRule.onNodeWithTag("avatar_overlay_content_frame").assertIsDisplayed()
         composeRule.onNodeWithTag("avatar_overlay_stage").assertIsDisplayed()
         composeRule.onNodeWithTag("avatar_notification_tray").assertIsDisplayed()
         composeRule.onNodeWithTag("avatar_overlay_mascot").assertIsDisplayed()

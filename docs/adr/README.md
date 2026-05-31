@@ -18,6 +18,8 @@
   主题：项目信号 HUD 与旧 payload 动态兜底。
 - `0005-realtime-event-spool-for-pet-feed.md`
   主题：实时事件 spool 与第二屏优先数据源。
+- `0006-thread-bubble-feed-source.md`
+  主题：Codex thread 气泡作为第二屏真实数据源。
 
 ## 新增流程
 

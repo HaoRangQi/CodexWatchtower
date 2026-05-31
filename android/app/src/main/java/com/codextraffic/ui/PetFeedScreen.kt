@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,7 +28,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -67,9 +65,6 @@ import com.codextraffic.model.TrafficUiState
 private const val OverlayAssetFile = "codex_bsod_spritesheet.webp"
 private const val OverlayFrameWidth = 192
 private const val OverlayFrameHeight = 208
-private const val PrototypeViewportWidth = 356f
-private const val PrototypeViewportHeight = 320f
-
 @Composable
 fun PetFeedScreen(
     uiState: TrafficUiState,
@@ -83,51 +78,31 @@ fun PetFeedScreen(
         modifier = modifier
             .fillMaxSize()
             .background(OverlayColors.Background)
-            .padding(8.dp)
+            .padding(horizontal = 18.dp, vertical = 22.dp)
             .testTag("pet_feed_screen"),
-        contentAlignment = Alignment.Center,
     ) {
-        BoxWithConstraints(
+        OverlayStage()
+        NotificationTray(
+            feedItems = feedItems,
+            omittedFeedCount = uiState.snapshot.omittedFeedCount,
+            connectionStatus = uiState.connectionStatus,
             modifier = Modifier
                 .fillMaxWidth()
-                .widthIn(max = PrototypeViewportWidth.dp)
-                .aspectRatio(PrototypeViewportWidth / PrototypeViewportHeight)
-                .offset(y = (-48).dp)
-                .testTag("avatar_overlay_content_frame"),
-        ) {
-            val trayWidth = maxWidth * (276f / PrototypeViewportWidth)
-            val trayHeight = maxHeight * (131f / PrototypeViewportHeight)
-            val trayLeft = maxWidth * (80f / PrototypeViewportWidth)
-            val trayTop = maxHeight * (56f / PrototypeViewportHeight)
-            val mascotWidth = maxWidth * (112f / PrototypeViewportWidth)
-            val mascotHeight = maxHeight * (121f / PrototypeViewportHeight)
-            val mascotLeft = maxWidth * (244f / PrototypeViewportWidth)
-            val mascotTop = maxHeight * (191f / PrototypeViewportHeight)
-
-            OverlayStage()
-            NotificationTray(
-                feedItems = feedItems,
-                omittedFeedCount = uiState.snapshot.omittedFeedCount,
-                connectionStatus = uiState.connectionStatus,
-                modifier = Modifier
-                    .width(trayWidth)
-                    .height(trayHeight)
-                    .align(Alignment.TopStart)
-                    .offset(x = trayLeft, y = trayTop)
-                    .testTag("avatar_notification_tray"),
-            )
-            FloatingMascot(
-                state = mascotState,
-                activeCount = feedItems.size,
-                motionEnabled = mascotMotionEnabled,
-                modifier = Modifier
-                    .width(mascotWidth)
-                    .height(mascotHeight)
-                    .align(Alignment.TopStart)
-                    .offset(x = mascotLeft, y = mascotTop)
-                    .testTag("avatar_overlay_mascot"),
-            )
-        }
+                .align(Alignment.TopCenter)
+                .padding(top = 92.dp)
+                .testTag("avatar_notification_tray"),
+        )
+        FloatingMascot(
+            state = mascotState,
+            activeCount = feedItems.size,
+            motionEnabled = mascotMotionEnabled,
+            modifier = Modifier
+                .width(152.dp)
+                .height(165.dp)
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 118.dp)
+                .testTag("avatar_overlay_mascot"),
+        )
     }
 }
 
@@ -151,17 +126,19 @@ private fun NotificationTray(
 ) {
     Column(
         modifier = modifier
-            .padding(vertical = 2.dp),
+            .widthIn(max = 380.dp),
     ) {
         if (feedItems.isEmpty()) {
             EmptyOverlayFeed(connectionStatus = connectionStatus)
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 items(
-                    feedItems.take(3),
+                    feedItems.take(2),
                     key = { "${it.projectId}_${it.reason.wireValue}_${it.ageSeconds}" },
                 ) { item ->
                     OverlayNotificationRow(item = item)
@@ -171,8 +148,8 @@ private fun NotificationTray(
                         Text(
                             text = "+$omittedFeedCount 更早",
                             color = OverlayColors.Faint,
-                            fontSize = 10.sp,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            fontSize = 15.sp,
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp),
                             letterSpacing = 0.sp,
                         )
                     }
@@ -186,8 +163,8 @@ private fun NotificationTray(
 private fun EmptyOverlayFeed(connectionStatus: ConnectionStatus) {
     Box(
         modifier = Modifier
-            .fillMaxSize()
-            .wrapContentHeight()
+            .fillMaxWidth()
+            .height(132.dp)
             .shadow(10.dp, OverlayShapes.NotificationCard)
             .background(OverlayColors.CardSurface, OverlayShapes.NotificationCard)
             .border(
@@ -199,7 +176,8 @@ private fun EmptyOverlayFeed(connectionStatus: ConnectionStatus) {
         Text(
             text = connectionStatus.emptyFeedLabel(),
             color = OverlayColors.Muted,
-            fontSize = 13.sp,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
             letterSpacing = 0.sp,
         )
     }
@@ -232,30 +210,31 @@ private fun OverlayNotificationRow(item: PetFeedItem) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 12.dp, top = 5.dp, end = 34.dp, bottom = 5.dp),
+                .padding(start = 20.dp, top = 16.dp, end = 54.dp, bottom = 17.dp),
         ) {
             Text(
                 text = item.overlayTitle(),
                 color = OverlayColors.Ink,
-                fontSize = 12.sp,
+                fontSize = 22.sp,
+                lineHeight = 27.sp,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 letterSpacing = 0.sp,
             )
-            Spacer(Modifier.height(1.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
                 text = item.body,
                 color = OverlayColors.Muted,
-                fontSize = 9.sp,
-                lineHeight = 12.sp,
-                maxLines = if (isWaiting) 1 else 2,
+                fontSize = 16.sp,
+                lineHeight = 22.sp,
+                maxLines = if (isWaiting) 2 else 3,
                 overflow = TextOverflow.Ellipsis,
                 letterSpacing = 0.sp,
             )
             if (isWaiting) {
-                Spacer(Modifier.height(5.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OverlayAction(item.primaryActionLabel(), OverlayColors.PrimaryButton)
                     OverlayAction("忽略", OverlayColors.SecondaryButton)
                 }
@@ -265,7 +244,7 @@ private fun OverlayNotificationRow(item: PetFeedItem) {
             item = item,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 4.dp, end = 6.dp),
+                .padding(top = 18.dp, end = 16.dp),
         )
     }
 }
@@ -299,7 +278,7 @@ private fun StatusGlyph(
     )
     Box(
         modifier = modifier
-            .size(22.dp)
+            .size(34.dp)
             .graphicsLayer {
                 alpha = pulse
                 scaleX = 0.92f + pulse * 0.08f

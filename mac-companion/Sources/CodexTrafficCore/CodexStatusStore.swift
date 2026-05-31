@@ -42,9 +42,15 @@ public struct CodexStatusStore: Sendable {
             let archivedFilter = columns.contains("archived")
                 ? "WHERE archived = 0 OR archived IS NULL"
                 : ""
+            let titleExpression = columns.contains("title") ? "COALESCE(title, '')" : "''"
+            let previewExpression = columns.contains("preview") ? "COALESCE(preview, '')" : "''"
+            let rolloutPathExpression = columns.contains("rollout_path") ? "COALESCE(rollout_path, '')" : "''"
             let divisor = updatedColumn == "updated_at_ms" ? 1_000.0 : 1.0
             let sql = """
-            SELECT id, cwd, \(updatedColumn)
+            SELECT id, cwd, \(updatedColumn),
+                   \(titleExpression),
+                   \(previewExpression),
+                   \(rolloutPathExpression)
             FROM threads
             \(archivedFilter)
             ORDER BY \(updatedColumn) DESC
@@ -55,7 +61,10 @@ public struct CodexStatusStore: Sendable {
                 CodexThread(
                     id: columnText(statement, 0),
                     cwd: columnText(statement, 1),
-                    updatedAt: Date(timeIntervalSince1970: Double(sqlite3_column_int64(statement, 2)) / divisor)
+                    updatedAt: Date(timeIntervalSince1970: Double(sqlite3_column_int64(statement, 2)) / divisor),
+                    title: columnText(statement, 3),
+                    preview: columnText(statement, 4),
+                    rolloutPath: columnText(statement, 5)
                 )
             }
         }

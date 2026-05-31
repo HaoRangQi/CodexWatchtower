@@ -14,6 +14,7 @@ let eventLogURL = argumentValue("--events")
 
 let store = CodexStatusStore()
 let eventStore = CodexEventStore(eventLogURL: eventLogURL)
+let threadFeedSynthesizer = ThreadFeedSynthesizer()
 let snapshotFeedSynthesizer = SnapshotFeedSynthesizer()
 let eventMapper = CodexEventMapper()
 let evaluator = StatusEvaluator()
@@ -23,6 +24,7 @@ func makePayload() throws -> Data {
     let snapshot = try store.loadSnapshot()
     let now = Date()
     let events = try eventStore.loadEvents(now: now)
+    let threadEvents = threadFeedSynthesizer.synthesize(snapshot: snapshot, now: now)
     let synthesizedEvents = snapshotFeedSynthesizer.synthesize(snapshot: snapshot, now: now)
     let status = evaluator.evaluate(snapshot: snapshot, now: now, events: events)
     let feedStatus = TrafficStatus(
@@ -31,7 +33,7 @@ func makePayload() throws -> Data {
         overall: status.overall,
         projects: status.projects,
         moreCount: status.moreCount,
-        feedItems: mergeFeedItems(primary: events, secondary: synthesizedEvents, now: now),
+        feedItems: mergeFeedItems(groups: [events, threadEvents, synthesizedEvents], now: now),
         moreFeedCount: 0
     )
     return try encoder.encode(feedStatus)
@@ -135,14 +137,10 @@ private func runMacApplication() -> Never {
     exit(EXIT_SUCCESS)
 }
 
-private func mergeFeedItems(
-    primary: [CodexRealtimeEvent],
-    secondary: [CodexRealtimeEvent],
-    now: Date
-) -> [PetFeedItem] {
+private func mergeFeedItems(groups: [[CodexRealtimeEvent]], now: Date) -> [PetFeedItem] {
     var seen = Set<String>()
     var result: [PetFeedItem] = []
-    for event in (primary + secondary).sorted(by: { $0.timestamp > $1.timestamp }) {
+    for event in groups.flatMap({ $0 }) {
         let key = "\(event.cwd)-\(event.kind.rawValue)-\(event.title)"
         guard !seen.contains(key) else {
             continue

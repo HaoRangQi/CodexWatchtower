@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#E8EDF5"
+        android:pathData="M31,38 L77,38 Q83,38 83,44 L83,69 Q83,75 77,75 L31,75 Q25,75 25,69 L25,44 Q25,38 31,38 Z" />
+    <path
+        android:fillColor="#111111"
+        android:pathData="M34,43 L74,43 Q78,43 78,47 L78,64 Q78,68 74,68 L34,68 Q30,68 30,64 L30,47 Q30,43 34,43 Z" />
+    <path
+        android:fillColor="#1997F2"
+        android:pathData="M36,45 L72,45 Q76,45 76,49 L76,62 Q76,66 72,66 L36,66 Q32,66 32,62 L32,49 Q32,45 36,45 Z" />
+
+    <path
+        android:fillColor="#111111"
+        android:pathData="M43,51 L47,51 L47,60 L43,60 Z" />
+    <path
+        android:fillColor="#111111"
+        android:pathData="M61,51 L65,51 L65,60 L61,60 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.9"
+        android:pathData="M51,62 Q54,65 57,62 L58,63 Q54,67 50,63 Z" />
+
+    <path
+        android:fillColor="#E8EDF5"
+        android:pathData="M38,75 L47,75 L47,83 L38,83 Z" />
+    <path
+        android:fillColor="#E8EDF5"
+        android:pathData="M61,75 L70,75 L70,83 L61,83 Z" />
+    <path
+        android:fillColor="#E8EDF5"
+        android:pathData="M22,55 L25,55 L25,67 L22,67 Z" />
+    <path
+        android:fillColor="#E8EDF5"
+        android:pathData="M83,55 L86,55 L86,67 L83,67 Z" />
+
+    <path
+        android:strokeColor="#556070"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M58,37 Q62,28 73,27" />
+    <path
+        android:fillColor="#1997F2"
+        android:pathData="M73,21 L81,21 Q85,21 85,25 L85,33 Q85,37 81,37 L73,37 Q69,37 69,33 L69,25 Q69,21 73,21 Z" />
+    <path
+        android:fillColor="#66C5FF"
+        android:pathData="M75,23 L80,23 Q83,23 83,26 L83,28 L75,28 Z" />
+</vector>
